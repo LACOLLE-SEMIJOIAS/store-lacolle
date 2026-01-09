@@ -6,10 +6,9 @@ interface ProductCardProps {
   product: Product;
   onUpdate: (updatedProduct: Product) => void;
   isEditMode: boolean;
-  onAddToCart: () => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onUpdate, isEditMode, onAddToCart }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onUpdate, isEditMode }) => {
   const [imgError, setImgError] = useState(false);
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,7 +38,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onUpdate, isEditMode
           alt={product.name}
           onError={() => setImgError(true)}
           className={`h-full w-full object-cover transition-transform duration-700 ${
-            !imgError ? 'group-hover:scale-110' : ''
+            !imgError ? 'group-hover:scale-105' : ''
           }`}
         />
         
@@ -54,18 +53,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onUpdate, isEditMode
         {!isEditMode && product.stock === 0 && (
           <div className="absolute inset-0 bg-white/40 flex items-center justify-center backdrop-blur-[2px]">
              <span className="bg-black text-white text-[9px] font-bold px-5 py-2.5 uppercase tracking-[0.3em]">Indisponível</span>
-          </div>
-        )}
-
-        {/* BOTÃO ADICIONAR RÁPIDO */}
-        {!isEditMode && product.stock > 0 && (
-          <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-             <button 
-                onClick={onAddToCart}
-                className="w-full bg-black text-white py-3 text-[9px] font-bold uppercase tracking-[0.2em] shadow-2xl hover:bg-peach transition-colors"
-             >
-                Adicionar ao Carrinho
-             </button>
           </div>
         )}
       </div>

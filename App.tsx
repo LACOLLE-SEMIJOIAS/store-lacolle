@@ -1,9 +1,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { SAMPLE_PRODUCTS, WHOLESALE_CONFIG } from './constants';
-import { Product, CartItem } from './types';
+import { Product } from './types';
 import ProductCard from './components/ProductCard';
-import Cart from './components/Cart';
 
 const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>(() => {
@@ -11,8 +10,6 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : SAMPLE_PRODUCTS;
   });
 
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [isEditMode, setIsEditMode] = useState(false);
@@ -44,25 +41,6 @@ const App: React.FC = () => {
     setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
   };
 
-  const addToCart = (product: Product) => {
-    setCartItems(prev => {
-      const existing = prev.find(item => item.id === product.id);
-      if (existing) {
-        return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-      }
-      return [...prev, { ...product, quantity: 1 }];
-    });
-    setIsCartOpen(true);
-  };
-
-  const removeFromCart = (id: string) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
-  };
-
-  const updateCartQty = (id: string, qty: number) => {
-    setCartItems(prev => prev.map(item => item.id === id ? { ...item, quantity: qty } : item));
-  };
-
   const handleAdminToggle = () => {
     if (isEditMode) {
       setIsEditMode(false);
@@ -83,8 +61,6 @@ const App: React.FC = () => {
       setAuthError(true);
     }
   };
-
-  const totalCartItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const GITHUB_BASE = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main";
   const LOGO_URL = `${GITHUB_BASE}/Logo-Transparente-TopoPagina.png`;
@@ -153,11 +129,13 @@ const App: React.FC = () => {
           <div className="flex-1 flex justify-end">
             <button 
               onClick={handleAdminToggle}
-              className={`text-[9px] font-bold uppercase tracking-widest transition-colors ${
-                isEditMode ? 'text-peach hover:text-black' : 'text-zinc-300 hover:text-peach'
+              className={`px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all shadow-sm ${
+                isEditMode 
+                ? 'bg-black text-white hover:bg-peach' 
+                : 'bg-peach text-white hover:bg-black'
               }`}
             >
-              {isEditMode ? '[ Sair Edição ]' : '[ Painel Admin ]'}
+              {isEditMode ? 'Sair Edição' : 'Painel Admin'}
             </button>
           </div>
         </div>
@@ -188,17 +166,7 @@ const App: React.FC = () => {
           </div>
 
           <div className="hidden md:flex justify-end order-3">
-             <button 
-                onClick={() => setIsCartOpen(true)}
-                className="relative bg-white text-peach p-4 rounded-full transition-all hover:scale-105 shadow-lg"
-             >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
-                {totalCartItems > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-black text-white text-[10px] font-bold w-6 h-6 flex items-center justify-center rounded-full shadow-lg border-2 border-white">
-                    {totalCartItems}
-                  </span>
-                )}
-             </button>
+             {/* Carrinho removido conforme solicitado */}
           </div>
         </div>
       </header>
@@ -229,20 +197,10 @@ const App: React.FC = () => {
               product={product} 
               onUpdate={handleUpdateProduct}
               isEditMode={isEditMode}
-              onAddToCart={() => addToCart(product)}
             />
           ))}
         </div>
       </main>
-
-      <Cart 
-        items={cartItems} 
-        isOpen={isCartOpen} 
-        onClose={() => setIsCartOpen(false)}
-        onRemove={removeFromCart}
-        onUpdateQty={updateCartQty}
-        config={WHOLESALE_CONFIG}
-      />
 
       {/* FOOTER */}
       <footer className="bg-footer-beige py-16 px-6 text-center">
