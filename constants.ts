@@ -6,59 +6,86 @@ export const WHOLESALE_CONFIG: WholesaleConfig = {
   minQuantityPerItem: 3,
 };
 
+const GITHUB_IMG_BASE = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main/produtos";
+
+const createImageUrl = (name: string) => `${GITHUB_IMG_BASE}/${encodeURIComponent(name)}.webp`;
+
 export const SAMPLE_PRODUCTS: Product[] = [
-  {
-    id: '1',
-    sku: 'BR-001-GOLD',
-    name: 'Brinco Argola Cravejada Ouro 18k',
-    price: 45.90,
-    stock: 120,
-    category: 'Brincos',
-    imageUrl: 'https://images.unsplash.com/photo-1635767798638-3e25273a8236?q=80&w=800&auto=format&fit=crop'
-  },
-  {
-    id: '2',
-    sku: 'CL-054-GOLD',
-    name: 'Colar Veneziana Pingente Zircônia',
-    price: 89.00,
-    stock: 45,
-    category: 'Colares',
-    imageUrl: 'https://images.unsplash.com/photo-1599643478123-212f27941a9c?q=80&w=800&auto=format&fit=crop'
-  },
-  {
-    id: '3',
-    sku: 'AN-022-GOLD',
-    name: 'Anel Solitário Minimalista',
-    price: 32.50,
-    stock: 80,
-    category: 'Anéis',
-    imageUrl: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?q=80&w=800&auto=format&fit=crop'
-  },
-  {
-    id: '4',
-    sku: 'BR-015-SILVER',
-    name: 'Brinco Ponto de Luz Ródio Branco',
-    price: 18.00,
-    stock: 200,
-    category: 'Brincos',
-    imageUrl: 'https://images.unsplash.com/photo-1535633302703-b0703af78518?q=80&w=800&auto=format&fit=crop'
-  },
-  {
-    id: '5',
-    sku: 'PU-088-GOLD',
-    name: 'Pulseira Riviera Banho Ouro',
-    price: 115.00,
-    stock: 15,
-    category: 'Pulseiras',
-    imageUrl: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=800&auto=format&fit=crop'
-  },
-  {
-    id: '6',
-    sku: 'CL-099-PEARL',
-    name: 'Gargantilha Pérolas Shell',
-    price: 155.00,
-    stock: 30,
-    category: 'Colares',
-    imageUrl: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=800&auto=format&fit=crop'
-  }
+  // LOTE 01
+  { id: 'lc-001', sku: 'LC0001', name: 'Brinco Espiral Vazado', price: 19.90, stock: 50, category: 'Brincos', imageUrl: createImageUrl('Brinco Espiral Vazado') },
+  { id: 'lc-002', sku: 'LC0002', name: 'Brinco Quadrado Listrado', price: 19.90, stock: 45, category: 'Brincos', imageUrl: createImageUrl('Brinco Quadrado Listrado') },
+  { id: 'lc-003', sku: 'LC0003', name: 'Colar Cartier com Borboleta Preta', price: 19.90, stock: 20, category: 'Colares', imageUrl: createImageUrl('Colar Cartier com Borboleta Preta') },
+  { id: 'lc-004', sku: 'LC0004', name: 'Colar Canutilhos com Esferas', price: 19.90, stock: 30, category: 'Colares', imageUrl: createImageUrl('Colar Canutilhos com Esferas') },
+  { id: 'lc-005', sku: 'LC0005', name: 'Colar Canutilhos com Esferas 1mm', price: 19.90, stock: 25, category: 'Colares', imageUrl: createImageUrl('Colar Canutilhos com Esferas 1mm') },
+  { id: 'lc-006', sku: 'LC0006', name: 'Brinco Ponto de Luz em Zircônia Cristal', price: 19.90, stock: 60, category: 'Brincos', imageUrl: createImageUrl('Brinco Ponto de Luz em Zircônia Cristal') },
+  { id: 'lc-007', sku: 'LC0007', name: 'Brinco Meia Bola Com Pérola e Borda 6mm', price: 19.90, stock: 15, category: 'Brincos', imageUrl: createImageUrl('Brinco Meia Bola Com Pérola e Borda 6mm') },
+  { id: 'lc-008', sku: 'LC0008', name: 'Brinco Com Base Redonda e Pérola', price: 19.90, stock: 10, category: 'Brincos', imageUrl: createImageUrl('Brinco Com Base Redonda e Pérola') },
+
+  // LOTE 02
+  { id: 'lc-009', sku: 'LC0009', name: 'Brinco Quadrado Cravejado com Zircônias Cristal 9x9mm', price: 20.90, stock: 18, category: 'Brincos', imageUrl: createImageUrl('Brinco Quadrado Cravejado com Zircônias Cristal 9x9mm') },
+  { id: 'lc-010', sku: 'LC0010', name: 'Brinco Quadrado Frisado Geométrico', price: 19.90, stock: 22, category: 'Brincos', imageUrl: createImageUrl('Brinco Quadrado Frisado Geométrico') },
+  { id: 'lc-011', sku: 'LC0011', name: 'Brinco Redondo com Efeito Raiado 28mm', price: 19.90, stock: 35, category: 'Brincos', imageUrl: createImageUrl('Brinco Redondo com Efeito Raiado 28mm') },
+  { id: 'lc-012', sku: 'LC0012', name: 'Brinco Flor Orgânica 6 Pontas Texturizada', price: 19.90, stock: 12, category: 'Brincos', imageUrl: createImageUrl('Brinco Flor Orgânica 6 Pontas Texturizada') },
+  { id: 'lc-013', sku: 'LC0013', name: 'Brinco Coração Plissado 1,3cm', price: 19.90, stock: 40, category: 'Brincos', imageUrl: createImageUrl('Brinco Coração Plissado 1,3cm') },
+  { id: 'lc-014', sku: 'LC0014', name: 'Brinco Flor 4 Pétalas', price: 19.90, stock: 28, category: 'Brincos', imageUrl: createImageUrl('Brinco Flor 4 Pétalas') },
+  { id: 'lc-015', sku: 'LC0015', name: 'Brinco Meia Argola Abaulada', price: 19.90, stock: 50, category: 'Brincos', imageUrl: createImageUrl('Brinco Meia Argola Abaulada') },
+  { id: 'lc-016', sku: 'LC0016', name: 'Brinco Coração De Pérola', price: 19.90, stock: 33, category: 'Brincos', imageUrl: createImageUrl('Brinco Coração De Pérola') },
+
+  // LOTE 03
+  { id: 'lc-017', sku: 'LC0017', name: 'Brinco Argolinha Reticulada Click', price: 19.90, stock: 21, category: 'Brincos', imageUrl: createImageUrl('Brinco Argolinha Reticulada Click') },
+  { id: 'lc-018', sku: 'LC0018', name: 'Brinco Argolinha Click de Esferas', price: 19.90, stock: 19, category: 'Brincos', imageUrl: createImageUrl('Brinco Argolinha Click de Esferas') },
+  { id: 'lc-019', sku: 'LC0019', name: 'Brinco Borboleta Branca Eleganza', price: 19.90, stock: 15, category: 'Brincos', imageUrl: createImageUrl('Brinco Borboleta Branca Eleganza') },
+  { id: 'lc-020', sku: 'LC0020', name: 'Choker Corrente Torcida Diamantada', price: 19.90, stock: 12, category: 'Colares', imageUrl: createImageUrl('Choker Corrente Torcida Diamantada') },
+  { id: 'lc-021', sku: 'LC0021', name: 'Colar Chocker Riviera Navete Cristal', price: 10.00, stock: 45, category: 'Colares', imageUrl: createImageUrl('Colar Chocker Riviera Navete Cristal') },
+  { id: 'lc-022', sku: 'LC0022', name: 'Brinco Argola Texturizada com Coração em Cristal', price: 19.90, stock: 30, category: 'Brincos', imageUrl: createImageUrl('Brinco Argola Texturizada com Coração em Cristal') },
+  { id: 'lc-023', sku: 'LC0023', name: 'Brinco Argola Vazada Cravejada Cristal', price: 10.00, stock: 55, category: 'Brincos', imageUrl: createImageUrl('Brinco Argola Vazada Cravejada Cristal') },
+  { id: 'lc-024', sku: 'LC0024', name: 'Brinco Borboleta Verde Eleganza', price: 10.00, stock: 22, category: 'Brincos', imageUrl: createImageUrl('Brinco Borboleta Verde Eleganza') },
+
+  // LOTE 04
+  { id: 'lc-025', sku: 'LC0025', name: 'Pulseira Cartier La Colle', price: 19.90, stock: 25, category: 'Pulseiras', imageUrl: createImageUrl('Pulseira Cartier La Colle') },
+  { id: 'lc-026', sku: 'LC0026', name: 'Colar Rabo de Rato com Flor 4 Pétalas', price: 19.90, stock: 18, category: 'Colares', imageUrl: createImageUrl('Colar Rabo de Rato com Flor 4 Pétalas') },
+  { id: 'lc-027', sku: 'LC0027', name: 'Brinco Girassol Cravejado com Cristais', price: 19.90, stock: 14, category: 'Brincos', imageUrl: createImageUrl('Brinco Girassol Cravejado com Cristais') },
+  { id: 'lc-028', sku: 'LC0028', name: 'Brinco Dourado Gota', price: 69.90, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco Dourado Gota') },
+  { id: 'lc-029', sku: 'LC0029', name: 'Brinco Dourado de Trevo com Zircônia Verde', price: 49.90, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco Dourado de Trevo com Zircônia Verde') },
+  { id: 'lc-030', sku: 'LC0030', name: 'Brinco Prateado Gota', price: 98.00, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco Prateado Gota') },
+  { id: 'lc-031', sku: 'LC0031', name: 'Pulseira Dourada Trevos Com Zircônias Preta', price: 49.90, stock: 0, category: 'Pulseiras', imageUrl: createImageUrl('Pulseira Dourada Trevos Com Zircônias Preta') },
+
+  // LOTE 05
+  { id: 'lc-033', sku: 'LC0033', name: 'Brinco Ponto de Luz Pequeno em Zircônia', price: 14.00, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco Ponto de Luz Pequeno em Zircônia') },
+  { id: 'lc-034', sku: 'LC0034', name: 'Brinco Ponto de Luz em Zircônia', price: 32.00, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco Ponto de Luz em Zircônia') },
+  { id: 'lc-035', sku: 'LC0035', name: 'Brinco com 4 Pontos de Luz em Zircônia', price: 35.90, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco com 4 Pontos de Luz em Zircônia') },
+  { id: 'lc-036', sku: 'LC0036', name: 'Brinco Clássico de Pérola', price: 16.00, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco Clássico de Pérola') },
+  { id: 'lc-037', sku: 'LC0037', name: 'Brinco de Pedra Zircônia em formato de Coração', price: 19.00, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco de Pedra Zircônia em formato de Coração') },
+  { id: 'lc-038', sku: 'LC0038', name: 'Colar Medalha Olho Grego', price: 54.50, stock: 0, category: 'Colares', imageUrl: createImageUrl('Colar Medalha Olho Grego') },
+  { id: 'lc-039', sku: 'LC0039', name: 'Colar Cordão Baiano', price: 64.00, stock: 0, category: 'Colares', imageUrl: createImageUrl('Colar Cordão Baiano') },
+  { id: 'lc-040', sku: 'LC0040', name: 'Brinco de Gota em Zircônia', price: 67.00, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco de Gota em Zircônia') },
+
+  // LOTE 06
+  { id: 'lc-041', sku: 'LC0041', name: 'Brinco de Argolinha Pequeno Coração Cravejado de Pedras', price: 26.00, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco de Argolinha Pequeno Coração Cravejado de Pedras') },
+  { id: 'lc-042', sku: 'LC0042', name: 'Brinco Ear Cuff Cristal Gota', price: 41.00, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco Ear Cuff Cristal Gota') },
+  { id: 'lc-043', sku: 'LC0043', name: 'Corrente Delicada Trançada', price: 63.00, stock: 0, category: 'Colares', imageUrl: createImageUrl('Corrente Delicada Trançada') },
+  { id: 'lc-044', sku: 'LC0044', name: 'Pulseira Trançada', price: 53.00, stock: 0, category: 'Pulseiras', imageUrl: createImageUrl('Pulseira Trançada') },
+  { id: 'lc-045', sku: 'LC0045', name: 'Pulseira de Pérolas e Bolinhas', price: 56.00, stock: 0, category: 'Pulseiras', imageUrl: createImageUrl('Pulseira de Pérolas e Bolinhas') },
+  { id: 'lc-046', sku: 'LC0046', name: 'Pulseira de Seta', price: 40.00, stock: 0, category: 'Pulseiras', imageUrl: createImageUrl('Pulseira de Seta') },
+  { id: 'lc-047', sku: 'LC0047', name: 'Pulseira Elo 3 por 1', price: 63.00, stock: 0, category: 'Pulseiras', imageUrl: createImageUrl('Pulseira Elo 3 por 1') },
+  { id: 'lc-048', sku: 'LC0048', name: 'Escapulário Quadrado', price: 43.00, stock: 0, category: 'Colares', imageUrl: createImageUrl('Escapulário Quadrado') },
+
+  // LOTE 07
+  { id: 'lc-049', sku: 'LC0049', name: 'Escapulário São Jorge', price: 48.00, stock: 0, category: 'Colares', imageUrl: createImageUrl('Escapulário São Jorge') },
+  { id: 'lc-050', sku: 'LC0050', name: 'Brinco de Coração Rosa', price: 42.00, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco de Coração Rosa') },
+  { id: 'lc-051', sku: 'LC0051', name: 'Brinco de Coração Verde', price: 42.00, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco de Coração Verde') },
+  { id: 'lc-052', sku: 'LC0052', name: 'Brinco de Pedra Retangular Verde', price: 41.00, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco de Pedra Retangular Verde') },
+  { id: 'lc-053', sku: 'LC0053', name: 'Brinco de Pedra Retangular Rosa', price: 41.00, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco de Pedra Retangular Rosa') },
+  { id: 'lc-054', sku: 'LC0054', name: 'Brinco Argolinha Pedra de Coração Verde', price: 42.00, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco Argolinha Pedra de Coração Verde') },
+  { id: 'lc-055', sku: 'LC0055', name: 'Brinco Argolinha Pedra de Coração Rosa', price: 42.00, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco Argolinha Pedra de Coração Rosa') },
+  { id: 'lc-056', sku: 'LC0056', name: 'Brinco Argolinha Pedra Retangular Verde', price: 42.00, stock: 0, category: 'Brincos', imageUrl: createImageUrl('Brinco Argolinha Pedra Retangular Verde') },
+
+  // LOTE 08
+  { id: 'lc-057', sku: 'LC0057', name: 'Colar Duplo de Coração em Cristal', price: 71.00, stock: 0, category: 'Colares', imageUrl: createImageUrl('Colar Duplo de Coração em Cristal') },
+  { id: 'lc-058', sku: 'LC0058', name: 'Colar Triplo 3 Pontos de Luz em Zircônia', price: 74.00, stock: 0, category: 'Colares', imageUrl: createImageUrl('Colar Triplo 3 Pontos de Luz em Zircônia') },
+  { id: 'lc-059', sku: 'LC0059', name: 'Pulseira Dupla de Elo Português e Pérolas com Pingente', price: 41.00, stock: 0, category: 'Pulseiras', imageUrl: createImageUrl('Pulseira Dupla de Elo Português e Pérolas com Pingente') },
+  { id: 'lc-060', sku: 'LC0060', name: 'Pulseira Elo Português com Coração, Cadeado, Trevo e Chave', price: 76.00, stock: 0, category: 'Pulseiras', imageUrl: createImageUrl('Pulseira Elo Português com Coração, Cadeado, Trevo e Chave') },
+  { id: 'lc-061', sku: 'LC0061', name: 'Colar Chocker de Pérolas', price: 50.00, stock: 0, category: 'Colares', imageUrl: createImageUrl('Colar Chocker de Pérolas') },
+  { id: 'lc-062', sku: 'LC0062', name: 'Colar Chocker de Fita', price: 89.00, stock: 0, category: 'Colares', imageUrl: createImageUrl('Colar Chocker de Fita') },
+  { id: 'lc-063', sku: 'LC0063', name: 'Colar Chocker Trançada', price: 84.00, stock: 0, category: 'Colares', imageUrl: createImageUrl('Colar Chocker Trançada') }
 ];
