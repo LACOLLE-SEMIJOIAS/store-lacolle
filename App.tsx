@@ -189,7 +189,16 @@ const App: React.FC = () => {
       </nav>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 max-w-[1400px] mx-auto w-full px-6 py-12">
+      <main className="flex-1 max-w-[1400px] mx-auto w-full px-6 py-8">
+        <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4">
+          <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-400">
+            {selectedCategory === 'Todos' ? 'Coleção Completa' : selectedCategory}
+          </div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-900 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+            {filteredProducts.length} {filteredProducts.length === 1 ? 'Produto' : 'Produtos'}
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
           {filteredProducts.map(product => (
             <ProductCard 
