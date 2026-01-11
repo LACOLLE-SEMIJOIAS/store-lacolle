@@ -21,36 +21,49 @@ const App: React.FC = () => {
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState(false);
 
-  // URLs fixas e seguras para os ativos da marca
-  const LOGO_URL = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main/Logo-Transparente-TopoPagina.png";
-  const FOOTER_LOGO_URL = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main/Logo-TransparenteRodape-Pagina.png";
+  // Ativos do GitHub
+  const GITHUB_BASE = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main";
+  const LOGO_URL = `${GITHUB_BASE}/Logo-Transparente-TopoPagina.png`;
+  
+  // Ícones GIF de Contato conforme screenshot do GitHub
+  const ICON_WHATSAPP = `${GITHUB_BASE}/04-chat.gif`;
+  const ICON_EMAIL = `${GITHUB_BASE}/03-email.gif`;
 
-  const syncPricesAndStock = async () => {
-    if (!supabase) return;
+  const loadAllProducts = async () => {
+    if (!supabase) {
+      setDbStatus('offline');
+      return;
+    }
 
     try {
       const { data, error } = await supabase
         .from('products')
-        .select('sku, price, stock');
+        .select('*')
+        .order('sku', { ascending: true });
 
       if (error) throw error;
 
       if (data && data.length > 0) {
-        setProducts(prev => prev.map(localProd => {
-          const dbItem = data.find(d => d.sku === localProd.sku);
-          if (dbItem) {
-            return {
-              ...localProd,
-              price: dbItem.price || localProd.price,
-              stock: dbItem.stock !== undefined ? dbItem.stock : localProd.stock
-            };
-          }
-          return localProd;
-        }));
+        const mappedData: Product[] = data.map(dbItem => {
+          const fileName = dbItem.name || dbItem.sku;
+          const imageUrl = `${GITHUB_BASE}/produtos/${fileName.replace(/\s/g, '%20')}.webp`;
+          
+          return {
+            id: dbItem.id.toString(),
+            sku: dbItem.sku,
+            name: dbItem.name,
+            price: dbItem.price,
+            stock: dbItem.stock,
+            category: dbItem.category || 'Geral',
+            imageUrl: imageUrl
+          };
+        });
+        
+        setProducts(mappedData);
         setDbStatus('connected');
       }
     } catch (err) {
-      console.error("Erro ao sincronizar preços:", err);
+      console.error("Erro ao carregar acervo:", err);
       setDbStatus('error');
     }
   };
@@ -61,7 +74,7 @@ const App: React.FC = () => {
       const savedCart = localStorage.getItem('lacolle_cart');
       if (savedCart) setCartItems(JSON.parse(savedCart));
       
-      await syncPricesAndStock();
+      await loadAllProducts();
       setLoading(false);
     };
     init();
@@ -93,7 +106,7 @@ const App: React.FC = () => {
           sku: updatedProduct.sku,
           price: updatedProduct.price,
           stock: updatedProduct.stock,
-          name: updatedProduct.name, // Mantém backup do nome no banco
+          name: updatedProduct.name,
           category: updatedProduct.category
         }, { onConflict: 'sku' });
       } catch (err) { console.error(err); }
@@ -104,70 +117,113 @@ const App: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-white text-black">
       {showAuthModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowAuthModal(false)} />
-          <div className="relative bg-white p-10 rounded-lg shadow-2xl w-full max-w-sm text-center">
-            <h2 className="text-xs font-bold uppercase tracking-[0.4em] mb-10">Painel Administrativo</h2>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowAuthModal(false)} />
+          <div className="relative bg-white p-8 rounded-lg shadow-2xl w-full max-w-[440px] text-center border border-zinc-100">
+            <h2 className="text-[10px] font-bold uppercase tracking-[0.4em] mb-8 text-zinc-400">Painel Administrativo</h2>
             <form onSubmit={(e) => {
               e.preventDefault();
               if (passwordInput === 'lili04') { setIsEditMode(true); setShowAuthModal(false); }
               else setAuthError(true);
-            }} className="space-y-6">
-              <input autoFocus type="password" placeholder="SENHA" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} className="w-full bg-zinc-100 text-center py-4 text-sm outline-none rounded-sm border focus:border-peach" />
-              {authError && <p className="text-[9px] font-bold text-red-500 uppercase">Acesso Negado</p>}
-              <button type="submit" className="w-full bg-black text-white py-4 text-[10px] font-bold uppercase tracking-[0.3em]">Entrar</button>
+            }} className="space-y-5">
+              <input 
+                autoFocus 
+                type="password" 
+                placeholder="SENHA" 
+                value={passwordInput} 
+                onChange={(e) => setPasswordInput(e.target.value)} 
+                className="w-full bg-zinc-50 text-center py-3.5 text-xs outline-none rounded-sm border border-zinc-200 focus:border-peach transition-colors" 
+              />
+              {authError && <p className="text-[9px] font-bold text-red-500 uppercase tracking-widest">Acesso Negado</p>}
+              <button type="submit" className="w-full bg-black text-white py-3.5 text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-zinc-900 transition-colors">Entrar</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* BARRA DE STATUS DISCRETA */}
-      <div className="bg-[#fdf2f0] py-1.5 px-6 border-b border-peach/10 sticky top-0 z-40">
+      {/* BARRA DE STATUS E CONTATOS - FUNDO BRANCO GELO (OFICIAL) */}
+      <div className="bg-[#f4f7f6] py-2 px-6 border-b border-gray-100 sticky top-0 z-40">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-400' : 'bg-orange-300'}`}></span>
-            <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">
-              {dbStatus === 'connected' ? 'Preços Sincronizados' : 'Modo Offline'}
-            </span>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-400' : 'bg-[#f5a27a]'}`}></span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">
+                {dbStatus === 'connected' ? 'ONLINE' : 'OFFLINE'}
+              </span>
+            </div>
+            
+            <div className="h-3 w-[1px] bg-zinc-200"></div>
+
+            <div className="flex items-center gap-6">
+              <a href="https://wa.me/5511973420966" target="_blank" rel="noreferrer" className="flex items-center gap-2 group">
+                <img src={ICON_WHATSAPP} alt="WhatsApp" className="w-7 h-7 object-contain" />
+                <span className="text-[11px] font-normal text-zinc-500 group-hover:text-peach transition-colors tracking-tighter">+55 11 97342-0966</span>
+              </a>
+              <a href="mailto:atendimento@lacolle.com.br" className="flex items-center gap-2 group">
+                <img src={ICON_EMAIL} alt="Email" className="w-7 h-7 object-contain" />
+                <span className="text-[12px] font-normal text-zinc-500 group-hover:text-peach transition-colors lowercase tracking-tighter">atendimento@lacolle.com.br</span>
+              </a>
+            </div>
           </div>
-          <button onClick={() => isEditMode ? setIsEditMode(false) : setShowAuthModal(true)} className="text-[9px] font-bold uppercase tracking-widest text-peach/60 hover:text-peach transition-colors">
-            {isEditMode ? 'Sair do Modo Edição' : 'Área Admin'}
+          
+          <button 
+            onClick={() => isEditMode ? setIsEditMode(false) : setShowAuthModal(true)} 
+            className="bg-[#f5a27a] text-white px-5 py-2 rounded-sm text-[9px] font-black uppercase tracking-[0.2em] shadow-sm hover:brightness-105 transition-all"
+          >
+            {isEditMode ? 'SAIR MODO EDIÇÃO' : 'ÁREA ADMIN'}
           </button>
         </div>
       </div>
 
-      {/* HEADER PRINCIPAL */}
-      <header className="bg-peach pt-12 pb-16 px-6">
-        <div className="max-w-[1400px] mx-auto flex flex-col items-center gap-12">
-          <img src={LOGO_URL} alt="La Colle" className="h-20 md:h-32 object-contain" />
-          
-          <div className="w-full max-w-2xl relative">
-            <input 
-              type="text" 
-              placeholder="PESQUISAR POR MODELO OU SKU..." 
-              value={searchTerm} 
-              onChange={(e) => setSearchTerm(e.target.value)} 
-              className="w-full bg-white/10 border border-white/30 rounded-full px-10 py-4 text-xs tracking-[0.2em] text-white placeholder-white/60 focus:outline-none focus:bg-white/20 transition-all text-center" 
-            />
+      {/* HEADER: LOGO SEMPRE CENTRALIZADA - FUNDO PÊSSEGO (OFICIAL) */}
+      <header className="bg-peach py-10 px-6">
+        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-3 items-center gap-6">
+          <div className="flex justify-start">
+            <div className="relative w-full max-w-xs">
+              <input 
+                type="text" 
+                placeholder="Buscar" 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+                className="w-full bg-white/20 border border-white/40 rounded-full px-6 py-2.5 text-xs tracking-widest text-black placeholder-zinc-800 focus:outline-none focus:bg-white/40 transition-all text-left" 
+              />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
           </div>
+
+          <div className="flex justify-center">
+            <img src={LOGO_URL} alt="La Colle" className="h-12 md:h-16 lg:h-20 object-contain" />
+          </div>
+
+          <div className="hidden md:block"></div>
         </div>
       </header>
 
-      <nav className="bg-white border-b border-gray-100 py-1 px-6 sticky top-[33px] z-30 shadow-sm overflow-x-auto no-scrollbar">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-center gap-10">
-          {categories.map(cat => (
-            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`whitespace-nowrap py-5 text-[10px] uppercase tracking-[0.3em] font-bold border-b-2 transition-all ${selectedCategory === cat ? 'border-peach text-peach' : 'border-transparent text-zinc-300 hover:text-zinc-500'}`}>
-              {cat}
-            </button>
-          ))}
+      {/* NAVEGAÇÃO CATEGORIAS */}
+      <nav className="bg-white border-b border-gray-100 py-1 px-6 sticky top-[46px] z-30 shadow-sm overflow-x-auto no-scrollbar">
+        <div className="max-w-[1400px] mx-auto flex items-center justify-start">
+          <div className="flex items-center gap-6 md:gap-10">
+            {categories.map(cat => (
+              <button key={cat} onClick={() => setSelectedCategory(cat)} className={`whitespace-nowrap py-5 text-[10px] uppercase tracking-[0.3em] font-bold border-b-2 transition-all ${selectedCategory === cat ? 'border-peach text-peach' : 'border-transparent text-zinc-300 hover:text-zinc-500'}`}>
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
       </nav>
 
       <main className="flex-1 max-w-[1400px] mx-auto w-full px-6 py-16">
-        <div className="flex justify-center mb-16">
-          <div className="text-center">
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.5em] text-zinc-300 mb-2">Catálogo Atacado</h2>
-            <div className="h-[1px] w-12 bg-peach/30 mx-auto"></div>
+        <div className="flex flex-col items-center mb-16 gap-4">
+          <h2 className="text-[11px] font-bold uppercase tracking-[0.5em] text-zinc-300">Catálogo Atacado</h2>
+          <div className="bg-zinc-50 border border-zinc-100 px-6 py-2 rounded-full">
+             <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">
+               Mostrando {filteredProducts.length} de {products.length} itens
+             </span>
           </div>
+          <div className="h-[1px] w-12 bg-peach/30"></div>
         </div>
 
         {loading ? (
@@ -205,9 +261,10 @@ const App: React.FC = () => {
         config={WHOLESALE_CONFIG}
       />
 
+      {/* RODAPÉ BEGE (OFICIAL) */}
       <footer className="bg-footer-beige pt-24 pb-16 px-6 border-t border-zinc-100 mt-20">
         <div className="max-w-[1400px] mx-auto flex flex-col items-center gap-12">
-          <img src={FOOTER_LOGO_URL} alt="La Colle Footer" className="h-20 opacity-50 grayscale" />
+          <img src={LOGO_URL} alt="La Colle Footer" className="h-16 md:h-20 object-contain hover:scale-105 transition-transform duration-500" />
           <div className="text-center space-y-3">
              <p className="text-[10px] text-zinc-400 tracking-[0.5em] uppercase font-bold">La Colle & CO. Semijoias</p>
              <p className="text-[8px] text-zinc-400 tracking-[0.2em] uppercase">Feito com carinho para revendedoras</p>
