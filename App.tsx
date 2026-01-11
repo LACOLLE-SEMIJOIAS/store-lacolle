@@ -23,7 +23,8 @@ const App: React.FC = () => {
   const BASE_ICONS = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/icons/main";
   
   const LOGO_TOP = `${BASE_LOGO}/Logo-Transparente-TopoPagina.png`;
-  const LOGO_FOOTER = `${BASE_LOGO}/Logo-TransparenteRodape-Pagina.png`;
+  // Agora o logo do rodapé utiliza a mesma imagem do topo conforme solicitado
+  const LOGO_FOOTER = `${BASE_LOGO}/Logo-Transparente-TopoPagina.png`;
   const GIF_CHAT = `${BASE_ICONS}/04-chat.gif`;
   const GIF_EMAIL = `${BASE_ICONS}/03-email.gif`;
 
@@ -134,19 +135,19 @@ const App: React.FC = () => {
       {/* 1. BARRA SUPERIOR (CONFORME FOTO 3) */}
       <div className="bg-[#f8f9fa] border-b border-zinc-200 py-3 px-4 md:px-10">
         <div className="max-w-[1600px] mx-auto">
-          {/* Linha de Contatos em Linha Única */}
-          <div className="flex items-center gap-x-3 md:gap-x-6 text-[8px] md:text-[10px] text-zinc-400 font-bold tracking-widest uppercase overflow-x-auto no-scrollbar whitespace-nowrap justify-center md:justify-start">
+          {/* Linha de Contatos em Linha Única - Gap reduzido de gap-x-3/gap-x-6 para gap-x-1.5/gap-x-3 */}
+          <div className="flex items-center gap-x-1.5 md:gap-x-3 text-[8px] md:text-[10px] text-zinc-400 font-bold tracking-widest uppercase overflow-x-auto no-scrollbar whitespace-nowrap justify-center md:justify-start">
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <div className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-500' : 'bg-orange-400'}`}></div>
               <span>{dbStatus === 'connected' ? 'ONLINE' : 'OFFLINE'}</span>
             </div>
             <span className="text-zinc-200 flex-shrink-0">|</span>
-            <div className="flex items-center gap-2 flex-shrink-0 bg-white/50 px-2 py-0.5 rounded-sm">
+            <div className="flex items-center gap-1 md:gap-1.5 flex-shrink-0 bg-white/50 px-1 md:px-2 py-0.5 rounded-sm">
                <img src={GIF_CHAT} className="w-4 h-4 md:w-5 md:h-5 object-contain" alt="" />
                <span className="lowercase font-medium tracking-normal text-zinc-500">+55 11 97342-0966</span>
             </div>
             <span className="text-zinc-200 flex-shrink-0">|</span>
-            <div className="flex items-center gap-2 flex-shrink-0 bg-white/50 px-2 py-0.5 rounded-sm">
+            <div className="flex items-center gap-1 md:gap-1.5 flex-shrink-0 bg-white/50 px-1 md:px-2 py-0.5 rounded-sm">
                <img src={GIF_EMAIL} className="w-4 h-4 md:w-5 md:h-5 object-contain" alt="" />
                <span className="lowercase font-medium tracking-normal text-zinc-500">atendimento@lacolle.com.br</span>
             </div>
