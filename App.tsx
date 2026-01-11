@@ -23,7 +23,7 @@ const App: React.FC = () => {
   const ICON_WHATSAPP = `${GITHUB_BASE}/04-chat.gif`;
   const ICON_EMAIL = `${GITHUB_BASE}/03-email.gif`;
 
-  // Função para carregar dados do banco e mesclar com a lista base
+  // Carrega preços e estoques do banco e aplica sobre a lista do GitHub
   const syncProductsWithDB = async () => {
     if (!supabase) {
       setDbStatus('offline');
@@ -34,29 +34,28 @@ const App: React.FC = () => {
     try {
       const { data: dbProducts, error } = await supabase
         .from('products')
-        .select('sku, price, stock, name, category');
+        .select('sku, price, stock');
 
       if (error) throw error;
 
-      if (dbProducts) {
+      if (dbProducts && dbProducts.length > 0) {
         setProducts(prevProducts => {
           return prevProducts.map(baseProd => {
             const dbMatch = dbProducts.find(p => p.sku === baseProd.sku);
             if (dbMatch) {
               return {
                 ...baseProd,
-                price: dbMatch.price ?? baseProd.price,
-                stock: dbMatch.stock ?? baseProd.stock,
-                // Mantemos o nome e categoria do DB se existirem para consistência total
-                name: dbMatch.name ?? baseProd.name,
-                category: dbMatch.category ?? baseProd.category
+                price: dbMatch.price !== undefined ? dbMatch.price : baseProd.price,
+                stock: dbMatch.stock !== undefined ? dbMatch.stock : baseProd.stock
               };
             }
             return baseProd;
           });
         });
+        setDbStatus('connected');
+      } else {
+        setDbStatus('connected'); // Conectado mas banco vazio
       }
-      setDbStatus('connected');
     } catch (err) {
       console.error("Erro na sincronização:", err);
       setDbStatus('error');
@@ -68,22 +67,26 @@ const App: React.FC = () => {
   useEffect(() => {
     syncProductsWithDB();
 
-    // CONFIGURAÇÃO REALTIME: Ouve mudanças no banco e atualiza a tela na hora
+    // ESCUTA EM TEMPO REAL: Mudou no PC, muda no Celular na hora
     if (supabase) {
       const channel = supabase
-        .channel('db-changes')
+        .channel('public:products')
         .on('postgres_changes', 
           { event: '*', schema: 'public', table: 'products' }, 
           (payload) => {
             const updatedItem = payload.new as any;
-            setProducts(prev => prev.map(p => 
-              p.sku === updatedItem.sku 
-                ? { ...p, price: updatedItem.price, stock: updatedItem.stock } 
-                : p
-            ));
+            if (updatedItem && updatedItem.sku) {
+              setProducts(prev => prev.map(p => 
+                p.sku === updatedItem.sku 
+                  ? { ...p, price: updatedItem.price, stock: updatedItem.stock } 
+                  : p
+              ));
+            }
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') setDbStatus('connected');
+        });
 
       return () => {
         supabase.removeChannel(channel);
@@ -106,7 +109,7 @@ const App: React.FC = () => {
   }, [searchTerm, selectedCategory, products]);
 
   const handleUpdateProduct = async (updatedProduct: Product) => {
-    // Atualiza localmente primeiro (otimista)
+    // Atualização otimista na tela
     setProducts(prev => prev.map(p => p.sku === updatedProduct.sku ? updatedProduct : p));
     
     if (supabase) {
@@ -115,14 +118,13 @@ const App: React.FC = () => {
           sku: updatedProduct.sku,
           price: updatedProduct.price,
           stock: updatedProduct.stock,
-          name: updatedProduct.name,
+          name: updatedProduct.name, // Opcional, mas bom para identificação no painel Supabase
           category: updatedProduct.category
         }, { onConflict: 'sku' });
         
-        if (error) throw error;
+        if (error) console.error("Erro ao persistir:", error);
       } catch (err) { 
-        console.error("Erro ao salvar no banco:", err);
-        // Em caso de erro, poderíamos reverter o estado aqui, mas o Realtime corrigirá na próxima sync
+        console.error("Erro fatal ao salvar:", err);
       }
     }
   };
@@ -147,8 +149,8 @@ const App: React.FC = () => {
                 onChange={(e) => setPasswordInput(e.target.value)} 
                 className="w-full bg-zinc-50 text-center py-3.5 text-xs outline-none rounded-sm border border-zinc-200 focus:border-peach transition-colors" 
               />
-              {authError && <p className="text-[9px] font-bold text-red-500 uppercase tracking-widest">Acesso Negado</p>}
-              <button type="submit" className="w-full bg-black text-white py-3.5 text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-zinc-900 transition-colors">Entrar</button>
+              {authError && <p className="text-[9px] font-bold text-red-500 uppercase tracking-widest">Senha Incorreta</p>}
+              <button type="submit" className="w-full bg-black text-white py-3.5 text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-zinc-900 transition-colors">Acessar</button>
             </form>
           </div>
         </div>
@@ -159,9 +161,9 @@ const App: React.FC = () => {
         <div className="max-w-[1400px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
             <div className="flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-400' : 'bg-[#f5a27a]'}`}></span>
+              <span className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></span>
               <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 whitespace-nowrap">
-                {dbStatus === 'connected' ? 'Sincronizado' : 'Modo Offline'}
+                {dbStatus === 'connected' ? 'Sincronizado' : 'Erro de Conexão'}
               </span>
             </div>
             
@@ -183,7 +185,7 @@ const App: React.FC = () => {
             onClick={() => isEditMode ? setIsEditMode(false) : setShowAuthModal(true)} 
             className="bg-[#f5a27a] text-white px-4 py-1.5 rounded-sm text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] shadow-sm hover:brightness-105 transition-all"
           >
-            {isEditMode ? 'ENCERRAR EDIÇÃO' : 'GERENCIAR ESTOQUE'}
+            {isEditMode ? 'SAIR DA EDIÇÃO' : 'EDITAR ESTOQUE'}
           </button>
         </div>
       </div>
@@ -227,10 +229,10 @@ const App: React.FC = () => {
 
       <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 py-12 md:py-16">
         <div className="flex flex-col items-center mb-12 md:mb-16 gap-4">
-          <h2 className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.5em] text-zinc-300">Catálogo Atacado</h2>
+          <h2 className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.5em] text-zinc-300">Catálogo Online</h2>
           <div className="bg-zinc-50 border border-zinc-100 px-5 py-1.5 rounded-full">
              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">
-               {isEditMode ? 'MODO DE EDIÇÃO ATIVO' : `Mostrando ${filteredProducts.length} itens`}
+               {isEditMode ? 'MODO DE GERENCIAMENTO' : `${filteredProducts.length} ITENS NO ACERVO`}
              </span>
           </div>
           <div className="h-[1px] w-12 bg-peach/30"></div>
@@ -239,7 +241,7 @@ const App: React.FC = () => {
         {loading ? (
           <div className="flex flex-col items-center py-32">
              <div className="w-8 h-8 border-2 border-peach border-t-transparent rounded-full animate-spin"></div>
-             <p className="mt-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Sincronizando Dados...</p>
+             <p className="mt-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Sincronizando nuvem...</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 md:gap-x-6 gap-y-10 md:gap-y-12">
@@ -260,7 +262,7 @@ const App: React.FC = () => {
           <img src={LOGO_URL} alt="La Colle Footer" className="h-14 md:h-18 object-contain" />
           <div className="text-center space-y-3">
              <p className="text-[9px] md:text-[10px] text-zinc-400 tracking-[0.5em] uppercase font-bold">La Colle & CO. Semijoias</p>
-             <p className="text-[8px] text-zinc-400 tracking-[0.2em] uppercase">Gestão de Preços e Estoque Cloud</p>
+             <p className="text-[8px] text-zinc-400 tracking-[0.2em] uppercase">Estoque e Preços Sincronizados</p>
           </div>
         </div>
       </footer>
