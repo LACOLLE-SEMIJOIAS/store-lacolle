@@ -6,13 +6,13 @@ export const WHOLESALE_CONFIG: WholesaleConfig = {
   minQuantityPerItem: 3,
 };
 
-const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main/produtos";
+// NOVO CAMINHO: Repositório 'produtos'
+const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/produtos/main";
 
-// Função para gerar a URL das imagens via GitHub para máxima compatibilidade
+// Função para gerar a URL das imagens via GitHub
 const createImageUrl = (name: string) => `${GITHUB_RAW_BASE}/${name.replace(/\s/g, '%20')}.webp`;
 
 export const SAMPLE_PRODUCTS: Product[] = [
-  // Primeiros 20 mantidos conforme solicitado
   { id: 'lc-001', sku: 'LC0001', name: 'Brinco Espiral Vazado', price: 19.90, stock: 50, category: 'Brincos', imageUrl: createImageUrl('Brinco Espiral Vazado') },
   { id: 'lc-002', sku: 'LC0002', name: 'Brinco Quadrado Listrado', price: 19.90, stock: 45, category: 'Brincos', imageUrl: createImageUrl('Brinco Quadrado Listrado') },
   { id: 'lc-003', sku: 'LC0003', name: 'Colar Cartier com Borboleta Preta', price: 19.90, stock: 20, category: 'Colares', imageUrl: createImageUrl('Colar Cartier com Borboleta Preta') },
@@ -33,8 +33,6 @@ export const SAMPLE_PRODUCTS: Product[] = [
   { id: 'lc-018', sku: 'LC0018', name: 'Brinco Argolinha Click de Esferas', price: 19.90, stock: 19, category: 'Brincos', imageUrl: createImageUrl('Brinco Argolinha Click de Esferas') },
   { id: 'lc-019', sku: 'LC0019', name: 'Brinco Borboleta Branca Eleganza', price: 19.90, stock: 15, category: 'Brincos', imageUrl: createImageUrl('Brinco Borboleta Branca Eleganza') },
   { id: 'lc-020', sku: 'LC0020', name: 'Choker Corrente Torcida Diamantada', price: 19.90, stock: 12, category: 'Colares', imageUrl: createImageUrl('Choker Corrente Torcida Diamantada') },
-
-  // Restante baseado nos prints do GitHub (21 a 62)
   { id: 'lc-021', sku: 'LC0021', name: 'Colar Chocker de Pérolas', price: 22.90, stock: 15, category: 'Colares', imageUrl: createImageUrl('Colar Chocker de Pérolas') },
   { id: 'lc-022', sku: 'LC0022', name: 'Pulseira Elo Português com Coração, Cadeado, Trevo e Chave', price: 29.90, stock: 10, category: 'Pulseiras', imageUrl: createImageUrl('Pulseira Elo Português com Coração, Cadeado, Trevo e Chave') },
   { id: 'lc-023', sku: 'LC0023', name: 'Brinco de Argolinha Pequeno Coração Cravejado de Pedras', price: 16.90, stock: 20, category: 'Brincos', imageUrl: createImageUrl('Brinco de Argolinha Pequeno Coração Cravejado de Pedras') },

@@ -18,8 +18,14 @@ const App: React.FC = () => {
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState(false);
 
-  const GITHUB_BASE = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main";
-  const LOGO_URL = `${GITHUB_BASE}/Logo-Transparente-TopoPagina.png`;
+  // NOVOS CAMINHOS GITHUB ATUALIZADOS
+  const BASE_LOGO = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/logo/main";
+  const BASE_ICONS = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/icons/main";
+  
+  const LOGO_TOP = `${BASE_LOGO}/Logo-Transparente-TopoPagina.png`;
+  const LOGO_FOOTER = `${BASE_LOGO}/Logo-TransparenteRodape-Pagina.png`;
+  const GIF_CHAT = `${BASE_ICONS}/04-chat.gif`;
+  const GIF_EMAIL = `${BASE_ICONS}/03-email.gif`;
 
   const syncWithDatabase = async () => {
     if (!connectionMeta.hasUrl || !connectionMeta.hasKey) {
@@ -125,32 +131,32 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* 1. BARRA SUPERIOR (TOTALMENTE FIEL À FOTO) */}
-      <div className="bg-[#f8f9fa] border-b border-zinc-200 py-3 px-2 md:px-10">
+      {/* 1. BARRA SUPERIOR (CONFORME FOTO 3) */}
+      <div className="bg-[#f8f9fa] border-b border-zinc-200 py-3 px-4 md:px-10">
         <div className="max-w-[1600px] mx-auto">
-          {/* Linha de Contatos: Flex Wrap para mobile para garantir que caiba */}
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-2 md:gap-x-4 text-[8px] md:text-[10px] text-zinc-400 font-bold tracking-widest uppercase">
-            <div className="flex items-center gap-1">
+          {/* Linha de Contatos em Linha Única */}
+          <div className="flex items-center gap-x-3 md:gap-x-6 text-[8px] md:text-[10px] text-zinc-400 font-bold tracking-widest uppercase overflow-x-auto no-scrollbar whitespace-nowrap justify-center md:justify-start">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
               <div className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-500' : 'bg-orange-400'}`}></div>
               <span>{dbStatus === 'connected' ? 'ONLINE' : 'OFFLINE'}</span>
             </div>
-            <span className="text-zinc-300">|</span>
-            <div className="flex items-center gap-1">
-               <img src="/04-chat.gif" className="w-4 h-4 md:w-5 md:h-5" alt="" />
+            <span className="text-zinc-200 flex-shrink-0">|</span>
+            <div className="flex items-center gap-2 flex-shrink-0 bg-white/50 px-2 py-0.5 rounded-sm">
+               <img src={GIF_CHAT} className="w-4 h-4 md:w-5 md:h-5 object-contain" alt="" />
                <span className="lowercase font-medium tracking-normal text-zinc-500">+55 11 97342-0966</span>
             </div>
-            <span className="hidden md:block text-zinc-300">|</span>
-            <div className="flex items-center gap-1">
-               <img src="/03-email.gif" className="w-4 h-4 md:w-5 md:h-5" alt="" />
+            <span className="text-zinc-200 flex-shrink-0">|</span>
+            <div className="flex items-center gap-2 flex-shrink-0 bg-white/50 px-2 py-0.5 rounded-sm">
+               <img src={GIF_EMAIL} className="w-4 h-4 md:w-5 md:h-5 object-contain" alt="" />
                <span className="lowercase font-medium tracking-normal text-zinc-500">atendimento@lacolle.com.br</span>
             </div>
           </div>
           
-          {/* Botão Admin: Centralizado abaixo no mobile, à direita no desktop */}
+          {/* Botão Admin Centralizado Abaixo no Mobile, À direita no PC */}
           <div className="flex justify-center md:absolute md:top-3 md:right-10 mt-3 md:mt-0">
             <button 
               onClick={() => isEditMode ? setIsEditMode(false) : setShowAuthModal(true)} 
-              className="bg-[#f5a27a] text-white px-8 py-2 rounded-[2px] text-[10px] font-bold uppercase tracking-[0.2em] shadow-sm"
+              className="bg-[#f5a27a] text-white px-8 md:px-10 py-1.5 rounded-[2px] text-[10px] font-bold uppercase tracking-[0.2em] shadow-sm hover:brightness-105 active:scale-95 transition-all"
             >
               {isEditMode ? 'SAIR ADMIN' : 'ÁREA ADMIN'}
             </button>
@@ -158,39 +164,39 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. HEADER PÊSSEGO */}
-      <header className="bg-peach py-8 md:py-6 px-4 md:px-10">
+      {/* 2. HEADER PÊSSEGO (CONFORME FOTO 3 E INSTRUÇÃO) */}
+      <header className="bg-peach py-10 md:py-8 px-4 md:px-10">
         <div className="max-w-[1600px] mx-auto">
-          {/* MOBILE: Logo acima, Busca abaixo (Foto 1) */}
+          {/* MOBILE: Logo em cima, Busca em baixo */}
           <div className="flex md:hidden flex-col items-center gap-6">
-            <img src={LOGO_URL} alt="La Colle" className="h-12 object-contain" />
-            <div className="w-full max-w-[320px] relative">
+            <img src={LOGO_TOP} alt="La Colle" className="h-14 object-contain" />
+            <div className="w-full max-w-[340px] relative">
               <input 
                 type="text" placeholder="Buscar" value={searchTerm} 
                 onChange={(e) => setSearchTerm(e.target.value)} 
-                className="w-full bg-white/30 border border-white/20 rounded-full px-6 py-2.5 text-[13px] text-zinc-800 placeholder-zinc-700 focus:outline-none focus:bg-white/40 font-medium" 
+                className="w-full bg-white/30 border border-white/20 rounded-full px-6 py-3 text-[14px] text-zinc-800 placeholder-zinc-700 focus:outline-none focus:bg-white/40 font-medium" 
               />
               <div className="absolute inset-y-0 right-5 flex items-center">
-                 <svg className="w-4 h-4 text-zinc-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                 <svg className="w-4 h-4 text-zinc-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
               </div>
             </div>
           </div>
 
-          {/* DESKTOP: Logo centro, Busca direita (Imagem 2) */}
+          {/* DESKTOP: Logo centralizada acima, Busca à direita */}
           <div className="hidden md:grid grid-cols-3 items-center">
-            <div></div> {/* Vazio esquerda */}
+            <div /> {/* Espaço vazio esquerda */}
             <div className="flex justify-center">
-              <img src={LOGO_URL} alt="La Colle" className="h-20 object-contain" />
+              <img src={LOGO_TOP} alt="La Colle" className="h-24 object-contain" />
             </div>
             <div className="flex justify-end">
-              <div className="relative w-full max-w-[280px]">
+              <div className="relative w-full max-w-[300px]">
                 <input 
                   type="text" placeholder="Buscar" value={searchTerm} 
                   onChange={(e) => setSearchTerm(e.target.value)} 
-                  className="w-full bg-white/30 border border-white/30 rounded-full px-6 py-2.5 text-sm text-zinc-900 placeholder-zinc-800 focus:outline-none focus:bg-white/50 transition-all" 
+                  className="w-full bg-white/30 border border-white/30 rounded-full px-6 py-3 text-sm text-zinc-900 placeholder-zinc-800 focus:outline-none focus:bg-white/50 transition-all" 
                 />
                 <div className="absolute inset-y-0 right-6 flex items-center">
-                   <svg className="w-4 h-4 text-zinc-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                   <svg className="w-4 h-4 text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </div>
               </div>
             </div>
@@ -218,7 +224,7 @@ const App: React.FC = () => {
       </nav>
 
       {/* TEXTO DE CONTEÚDO */}
-      <div className="py-12 text-center bg-zinc-50/20">
+      <div className="py-12 text-center bg-zinc-50/10">
         <h2 className="text-[11px] text-zinc-400 font-bold uppercase tracking-[0.5em] mb-4">Catálogo Atacado</h2>
         <div className="inline-block bg-white border border-zinc-100 rounded-full px-8 py-2.5 text-[10px] text-zinc-400 font-bold uppercase tracking-widest shadow-sm">
           Mostrando {filteredProducts.length} de {products.length} itens
@@ -226,7 +232,7 @@ const App: React.FC = () => {
       </div>
 
       {/* LISTA DE PRODUTOS */}
-      <main className="flex-1 max-w-[1500px] mx-auto w-full px-4 md:px-10 pb-24 mt-8">
+      <main className="flex-1 max-w-[1500px] mx-auto w-full px-4 md:px-10 pb-24">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-x-4 md:gap-x-10 gap-y-16">
           {filteredProducts.map(product => (
             <ProductCard key={product.sku} product={product} onUpdate={handleUpdateProduct} isEditMode={isEditMode} />
@@ -234,10 +240,10 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* RODAPÉ (INALTERADO) */}
+      {/* RODAPÉ (CONFORME SOLICITADO) */}
       <footer className="bg-footer-beige py-20 px-6 border-t border-zinc-100">
         <div className="max-w-[1400px] mx-auto flex flex-col items-center text-center">
-          <img src={LOGO_URL} alt="La Colle" className="h-14 object-contain mb-8 opacity-60" />
+          <img src={LOGO_FOOTER} alt="La Colle" className="h-16 object-contain mb-8 opacity-70" />
           <div className="space-y-3">
             <p className="text-[10px] text-zinc-500 tracking-[0.5em] uppercase font-bold">La Colle & CO. Semijoias</p>
             <p className="text-[8px] text-zinc-400 tracking-[0.2em] uppercase font-medium">Feito com carinho para revendedoras</p>
