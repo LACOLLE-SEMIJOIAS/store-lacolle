@@ -9,36 +9,35 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onUpdate, isEditMode }) => {
-  // Lista de extensões para tentar carregar
   const extensions = ['.jpg', '.png', '.webp', '.jpeg'];
   const [extIndex, setExtIndex] = useState(0);
   const [imgError, setImgError] = useState(false);
   const [currentUrl, setCurrentUrl] = useState('');
+  const [copied, setCopied] = useState(false);
 
-  // Toda vez que o produto mudar ou houver erro, tenta a próxima extensão
   useEffect(() => {
-    // A URL base vem do constants.ts (sem extensão)
-    const base = product.imageUrl;
-    // v=2.1 para evitar cache do navegador durante os testes
-    setCurrentUrl(`${base}${extensions[extIndex]}?v=2.1`);
+    // Reset de erro e índice ao mudar de produto
+    setExtIndex(0);
+    setImgError(false);
+  }, [product.sku]);
+
+  useEffect(() => {
+    // Carrega a imagem da pasta local /produtos
+    setCurrentUrl(`${product.imageUrl}${extensions[extIndex]}`);
   }, [product.imageUrl, extIndex]);
 
   const handleImageError = () => {
     if (extIndex < extensions.length - 1) {
-      console.log(`Falha ao carregar ${extensions[extIndex]} para ${product.sku}, tentando próxima...`);
       setExtIndex(extIndex + 1);
     } else {
-      console.error(`Todas as extensões falharam para o produto ${product.sku}`);
       setImgError(true);
     }
   };
 
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onUpdate({ ...product, price: parseFloat(e.target.value) || 0 });
-  };
-
-  const handleStockChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onUpdate({ ...product, stock: parseInt(e.target.value) || 0 });
+  const copySku = () => {
+    navigator.clipboard.writeText(product.sku);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const formattedPrice = new Intl.NumberFormat('pt-BR', {
@@ -46,65 +45,84 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onUpdate, isEditMode
     currency: 'BRL',
   }).format(product.price);
 
-  const placeholderUrl = `https://via.placeholder.com/600x800/fdf2f0/f5a27a?text=${encodeURIComponent(product.sku)}`;
-
   return (
-    <div className={`group flex flex-col h-full bg-white transition-all duration-300 ${
-      isEditMode ? 'ring-1 ring-peach/20 p-2' : ''
-    }`}>
-      <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 rounded-sm">
+    <div className={`group flex flex-col bg-white transition-all duration-500`}>
+      {/* Imagem */}
+      <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 rounded-sm shadow-[0_4px_12px_rgba(0,0,0,0.03)] group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-500">
         <img 
-          src={imgError ? placeholderUrl : currentUrl} 
+          src={imgError ? `https://via.placeholder.com/600x800/fdf2f0/f5a27a?text=${product.sku}` : currentUrl} 
           alt={product.name}
           onError={handleImageError}
-          className={`h-full w-full object-cover transition-transform duration-700 ${
-            !imgError ? 'group-hover:scale-105' : ''
-          }`}
+          className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-105"
         />
-        <div className="absolute top-3 left-3">
-          <span className="bg-white/90 backdrop-blur-sm text-black text-[8px] md:text-[9px] px-2.5 py-1 tracking-[0.15em] font-bold shadow-sm rounded-[1px]">
-            {product.sku}
-          </span>
-        </div>
         
-        {!isEditMode && product.stock === 0 && (
-          <div className="absolute inset-0 bg-white/40 flex items-center justify-center backdrop-blur-[1px]">
-             <span className="bg-black text-white text-[9px] font-bold px-4 py-2 uppercase tracking-[0.2em]">Esgotado</span>
+        {/* SKU Badge - Clicável para copiar */}
+        <button 
+          onClick={copySku}
+          title="Clique para copiar o código"
+          className="absolute top-4 left-4 flex flex-col items-start gap-1"
+        >
+          <span className="bg-white/90 backdrop-blur-sm text-black text-[9px] px-3 py-1.5 tracking-[0.1em] font-bold shadow-sm rounded-sm uppercase hover:bg-black hover:text-white transition-colors">
+            {copied ? 'COPIADO!' : product.sku}
+          </span>
+          {!isEditMode && product.stock <= 5 && product.stock > 0 && (
+            <span className="bg-orange-500 text-white text-[8px] px-2 py-0.5 font-bold uppercase tracking-tighter rounded-sm animate-pulse">
+              Últimas Peças
+            </span>
+          )}
+        </button>
+        
+        {/* Esgotado Overlay */}
+        {product.stock === 0 && (
+          <div className="absolute inset-0 bg-white/60 flex items-center justify-center backdrop-blur-[2px]">
+             <span className="bg-black text-white text-[10px] font-bold px-6 py-2.5 uppercase tracking-[0.4em] shadow-xl">Esgotado</span>
           </div>
         )}
       </div>
       
-      <div className="py-3 flex flex-col gap-1">
-        <h3 className="text-[9px] md:text-[10px] font-medium text-zinc-400 uppercase tracking-widest truncate">
-          {product.category}
-        </h3>
-        <h2 className="text-[11px] md:text-[12px] font-bold text-zinc-900 uppercase tracking-tight line-clamp-2 h-9 md:h-10">
+      {/* Detalhes do Produto */}
+      <div className="pt-5 flex flex-col text-center md:text-left">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1 mb-2">
+           <h3 className="text-[8px] font-bold text-zinc-300 uppercase tracking-[0.3em]">
+            {product.category}
+          </h3>
+          {!isEditMode && product.stock > 0 && (
+             <span className="text-[8px] font-bold text-green-400 uppercase tracking-widest">
+               Disponível
+             </span>
+          )}
+        </div>
+
+        <h2 className="text-[12px] font-bold text-zinc-900 uppercase tracking-tight leading-relaxed mb-4 min-h-[40px]">
           {product.name}
         </h2>
         
-        <div className="mt-1 pt-2 border-t border-gray-50">
+        <div className="pt-4 border-t border-zinc-50">
           {isEditMode ? (
-            <div className="space-y-3">
-               <div>
-                  <label className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">Preço Atacado</label>
-                  <input type="number" value={product.price} onChange={handlePriceChange} className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1 text-xs font-bold focus:ring-1 focus:ring-peach outline-none" />
+            <div className="space-y-4 bg-zinc-50 p-4 rounded-sm border border-zinc-100">
+               <div className="flex flex-col">
+                  <span className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest mb-1">Preço Atacado</span>
+                  <input 
+                    type="number" 
+                    value={product.price} 
+                    onChange={(e) => onUpdate({...product, price: parseFloat(e.target.value) || 0})}
+                    className="bg-white border border-zinc-200 rounded px-3 py-2 text-xs font-bold focus:border-peach outline-none shadow-sm" 
+                  />
                </div>
-               <div>
-                  <label className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">Qtd Estoque</label>
-                  <input type="number" value={product.stock} onChange={handleStockChange} className="w-full bg-zinc-900 text-white rounded px-2 py-1 text-xs font-bold focus:ring-1 focus:ring-peach outline-none" />
+               <div className="flex flex-col">
+                  <span className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest mb-1">Estoque Físico</span>
+                  <input 
+                    type="number" 
+                    value={product.stock} 
+                    onChange={(e) => onUpdate({...product, stock: parseInt(e.target.value) || 0})}
+                    className="bg-zinc-900 text-white rounded px-3 py-2 text-xs font-bold outline-none shadow-inner" 
+                  />
                </div>
             </div>
           ) : (
-            <div className="flex justify-between items-end">
-              <div className="flex flex-col">
-                <span className="text-[8px] text-gray-400 font-bold uppercase tracking-tighter">Atacado</span>
-                <span className="text-sm md:text-base font-black text-zinc-900">{formattedPrice}</span>
-              </div>
-              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-sm ${
-                product.stock > 10 ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'
-              }`}>
-                {product.stock} DISP.
-              </span>
+            <div className="flex flex-col gap-1">
+              <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">Atacado</span>
+              <span className="text-base md:text-lg font-black text-zinc-900 tracking-tighter">{formattedPrice}</span>
             </div>
           )}
         </div>

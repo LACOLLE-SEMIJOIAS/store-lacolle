@@ -9,7 +9,7 @@ export interface Product {
   imageUrl: string;
 }
 
-// Fix: Adding CartItem interface to satisfy import requirements in Cart.tsx
+// Added missing CartItem interface as required by the Cart component
 export interface CartItem extends Product {
   quantity: number;
 }
