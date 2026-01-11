@@ -1,15 +1,12 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { SAMPLE_PRODUCTS, WHOLESALE_CONFIG } from './constants';
-import { Product, CartItem } from './types';
+import { SAMPLE_PRODUCTS } from './constants';
+import { Product } from './types';
 import ProductCard from './components/ProductCard';
-import Cart from './components/Cart';
 import { supabase } from './lib/supabase';
 
 const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>(SAMPLE_PRODUCTS);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dbStatus, setDbStatus] = useState<'connected' | 'offline' | 'error'>('offline');
   
@@ -25,7 +22,7 @@ const App: React.FC = () => {
   const GITHUB_BASE = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main";
   const LOGO_URL = `${GITHUB_BASE}/Logo-Transparente-TopoPagina.png`;
   
-  // Ícones GIF de Contato conforme screenshot do GitHub
+  // Ícones GIF de Contato
   const ICON_WHATSAPP = `${GITHUB_BASE}/04-chat.gif`;
   const ICON_EMAIL = `${GITHUB_BASE}/03-email.gif`;
 
@@ -71,18 +68,11 @@ const App: React.FC = () => {
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      const savedCart = localStorage.getItem('lacolle_cart');
-      if (savedCart) setCartItems(JSON.parse(savedCart));
-      
       await loadAllProducts();
       setLoading(false);
     };
     init();
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem('lacolle_cart', JSON.stringify(cartItems));
-  }, [cartItems]);
 
   const categories = useMemo(() => {
     const uniqueCategories = Array.from(new Set(products.map(p => p.category)));
@@ -140,45 +130,50 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* BARRA DE STATUS E CONTATOS - FUNDO BRANCO GELO (OFICIAL) */}
-      <div className="bg-[#f4f7f6] py-2 px-6 border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-6">
+      {/* BARRA DE STATUS E CONTATOS - RESPONSIVA */}
+      <div className="bg-[#f4f7f6] py-2 px-4 border-b border-gray-100 sticky top-0 z-40">
+        <div className="max-w-[1400px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
             <div className="flex items-center gap-1.5">
               <span className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-400' : 'bg-[#f5a27a]'}`}></span>
-              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 whitespace-nowrap">
                 {dbStatus === 'connected' ? 'ONLINE' : 'OFFLINE'}
               </span>
             </div>
             
-            <div className="h-3 w-[1px] bg-zinc-200"></div>
+            <div className="hidden sm:block h-3 w-[1px] bg-zinc-200"></div>
 
-            <div className="flex items-center gap-6">
-              <a href="https://wa.me/5511973420966" target="_blank" rel="noreferrer" className="flex items-center gap-2 group">
-                <img src={ICON_WHATSAPP} alt="WhatsApp" className="w-7 h-7 object-contain" />
-                <span className="text-[11px] font-normal text-zinc-500 group-hover:text-peach transition-colors tracking-tighter">+55 11 97342-0966</span>
+            <div className="flex items-center gap-4 sm:gap-6">
+              <a href="https://wa.me/5511973420966" target="_blank" rel="noreferrer" className="flex items-center gap-1.5 group">
+                <img src={ICON_WHATSAPP} alt="WhatsApp" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
+                <span className="text-[10px] sm:text-[11px] font-normal text-zinc-500 tracking-tighter">+55 11 97342-0966</span>
               </a>
-              <a href="mailto:atendimento@lacolle.com.br" className="flex items-center gap-2 group">
-                <img src={ICON_EMAIL} alt="Email" className="w-7 h-7 object-contain" />
-                <span className="text-[12px] font-normal text-zinc-500 group-hover:text-peach transition-colors lowercase tracking-tighter">atendimento@lacolle.com.br</span>
+              <a href="mailto:atendimento@lacolle.com.br" className="flex items-center gap-1.5 group">
+                <img src={ICON_EMAIL} alt="Email" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
+                <span className="text-[10px] sm:text-[12px] font-normal text-zinc-500 lowercase tracking-tighter">atendimento@lacolle.com.br</span>
               </a>
             </div>
           </div>
           
           <button 
             onClick={() => isEditMode ? setIsEditMode(false) : setShowAuthModal(true)} 
-            className="bg-[#f5a27a] text-white px-5 py-2 rounded-sm text-[9px] font-black uppercase tracking-[0.2em] shadow-sm hover:brightness-105 transition-all"
+            className="bg-[#f5a27a] text-white px-4 py-1.5 rounded-sm text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] shadow-sm hover:brightness-105 transition-all"
           >
             {isEditMode ? 'SAIR MODO EDIÇÃO' : 'ÁREA ADMIN'}
           </button>
         </div>
       </div>
 
-      {/* HEADER: LOGO SEMPRE CENTRALIZADA - FUNDO PÊSSEGO (OFICIAL) */}
-      <header className="bg-peach py-10 px-6">
-        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-3 items-center gap-6">
-          <div className="flex justify-start">
-            <div className="relative w-full max-w-xs">
+      {/* HEADER: LOGO E BUSCA CENTRALIZADOS NO MOBILE */}
+      <header className="bg-peach py-8 md:py-10 px-6">
+        <div className="max-w-[1400px] mx-auto flex flex-col md:grid md:grid-cols-3 items-center gap-6">
+          
+          <div className="order-1 md:order-2 flex justify-center">
+            <img src={LOGO_URL} alt="La Colle" className="h-14 md:h-16 lg:h-20 object-contain" />
+          </div>
+
+          <div className="order-2 md:order-1 flex justify-center md:justify-start w-full max-w-sm md:max-w-xs mx-auto md:mx-0">
+            <div className="relative w-full">
               <input 
                 type="text" 
                 placeholder="Buscar" 
@@ -194,20 +189,16 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex justify-center">
-            <img src={LOGO_URL} alt="La Colle" className="h-12 md:h-16 lg:h-20 object-contain" />
-          </div>
-
-          <div className="hidden md:block"></div>
+          <div className="hidden md:block order-3"></div>
         </div>
       </header>
 
       {/* NAVEGAÇÃO CATEGORIAS */}
-      <nav className="bg-white border-b border-gray-100 py-1 px-6 sticky top-[46px] z-30 shadow-sm overflow-x-auto no-scrollbar">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-start">
+      <nav className="bg-white border-b border-gray-100 py-1 px-6 sticky top-[44px] sm:top-[46px] z-30 shadow-sm overflow-x-auto no-scrollbar">
+        <div className="max-w-[1400px] mx-auto flex items-center justify-start sm:justify-center">
           <div className="flex items-center gap-6 md:gap-10">
             {categories.map(cat => (
-              <button key={cat} onClick={() => setSelectedCategory(cat)} className={`whitespace-nowrap py-5 text-[10px] uppercase tracking-[0.3em] font-bold border-b-2 transition-all ${selectedCategory === cat ? 'border-peach text-peach' : 'border-transparent text-zinc-300 hover:text-zinc-500'}`}>
+              <button key={cat} onClick={() => setSelectedCategory(cat)} className={`whitespace-nowrap py-4 sm:py-5 text-[9px] sm:text-[10px] uppercase tracking-[0.3em] font-bold border-b-2 transition-all ${selectedCategory === cat ? 'border-peach text-peach' : 'border-transparent text-zinc-300 hover:text-zinc-500'}`}>
                 {cat}
               </button>
             ))}
@@ -215,11 +206,11 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      <main className="flex-1 max-w-[1400px] mx-auto w-full px-6 py-16">
-        <div className="flex flex-col items-center mb-16 gap-4">
-          <h2 className="text-[11px] font-bold uppercase tracking-[0.5em] text-zinc-300">Catálogo Atacado</h2>
-          <div className="bg-zinc-50 border border-zinc-100 px-6 py-2 rounded-full">
-             <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">
+      <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 py-12 md:py-16">
+        <div className="flex flex-col items-center mb-12 md:mb-16 gap-4">
+          <h2 className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.5em] text-zinc-300">Catálogo Atacado</h2>
+          <div className="bg-zinc-50 border border-zinc-100 px-5 py-1.5 rounded-full">
+             <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">
                Mostrando {filteredProducts.length} de {products.length} itens
              </span>
           </div>
@@ -231,20 +222,12 @@ const App: React.FC = () => {
              <div className="w-8 h-8 border-2 border-peach border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-12">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 md:gap-x-6 gap-y-10 md:gap-y-12">
             {filteredProducts.map(product => (
               <ProductCard 
                 key={product.id} 
                 product={product} 
                 onUpdate={handleUpdateProduct}
-                onAddToCart={() => {
-                  setCartItems(prev => {
-                    const existing = prev.find(item => item.id === product.id);
-                    if (existing) return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-                    return [...prev, { ...product, quantity: 1 }];
-                  });
-                  setIsCartOpen(true);
-                }}
                 isEditMode={isEditMode}
               />
             ))}
@@ -252,21 +235,12 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <Cart 
-        isOpen={isCartOpen} 
-        onClose={() => setIsCartOpen(false)} 
-        items={cartItems} 
-        onRemove={(id) => setCartItems(prev => prev.filter(i => i.id !== id))}
-        onUpdateQty={(id, qty) => setCartItems(prev => prev.map(i => i.id === id ? { ...i, quantity: qty } : i))}
-        config={WHOLESALE_CONFIG}
-      />
-
       {/* RODAPÉ BEGE (OFICIAL) */}
-      <footer className="bg-footer-beige pt-24 pb-16 px-6 border-t border-zinc-100 mt-20">
-        <div className="max-w-[1400px] mx-auto flex flex-col items-center gap-12">
-          <img src={LOGO_URL} alt="La Colle Footer" className="h-16 md:h-20 object-contain hover:scale-105 transition-transform duration-500" />
+      <footer className="bg-footer-beige pt-20 pb-16 px-6 border-t border-zinc-100 mt-20">
+        <div className="max-w-[1400px] mx-auto flex flex-col items-center gap-10">
+          <img src={LOGO_URL} alt="La Colle Footer" className="h-14 md:h-18 object-contain hover:scale-105 transition-transform duration-500" />
           <div className="text-center space-y-3">
-             <p className="text-[10px] text-zinc-400 tracking-[0.5em] uppercase font-bold">La Colle & CO. Semijoias</p>
+             <p className="text-[9px] md:text-[10px] text-zinc-400 tracking-[0.5em] uppercase font-bold">La Colle & CO. Semijoias</p>
              <p className="text-[8px] text-zinc-400 tracking-[0.2em] uppercase">Feito com carinho para revendedoras</p>
           </div>
         </div>
