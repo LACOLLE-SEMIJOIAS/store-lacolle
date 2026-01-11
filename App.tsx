@@ -1,27 +1,86 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { SAMPLE_PRODUCTS, WHOLESALE_CONFIG } from './constants';
-import { Product } from './types';
+import { Product, CartItem } from './types';
 import ProductCard from './components/ProductCard';
+import Cart from './components/Cart';
+import { supabase } from './lib/supabase';
+import { getSmartSuggestions } from './services/geminiService';
 
 const App: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('lacolle_catalog_products');
-    return saved ? JSON.parse(saved) : SAMPLE_PRODUCTS;
-  });
-
+  const [products, setProducts] = useState<Product[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [dbStatus, setDbStatus] = useState<'connected' | 'offline' | 'error'>('offline');
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [isEditMode, setIsEditMode] = useState(false);
   
-  // Password protection state
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState(false);
 
+  // Estados para o Chat de IA
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiResponse, setAiResponse] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
   useEffect(() => {
-    localStorage.setItem('lacolle_catalog_products', JSON.stringify(products));
-  }, [products]);
+    const initApp = async () => {
+      setLoading(true);
+      const savedCart = localStorage.getItem('lacolle_cart');
+      if (savedCart) setCartItems(JSON.parse(savedCart));
+
+      if (!supabase) {
+        const localData = localStorage.getItem('lacolle_catalog_products');
+        setProducts(localData ? JSON.parse(localData) : SAMPLE_PRODUCTS);
+        setDbStatus('offline');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('sku', { ascending: true });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const mappedData = data.map(item => ({
+            id: item.id.toString(),
+            sku: item.sku,
+            name: item.name,
+            price: item.price,
+            stock: item.stock,
+            category: item.category,
+            imageUrl: item.image_url
+          }));
+          setProducts(mappedData);
+          setDbStatus('connected');
+        } else {
+          setProducts(SAMPLE_PRODUCTS);
+          setDbStatus('connected');
+        }
+      } catch (err: any) {
+        console.error("Erro Supabase:", err.message);
+        setDbStatus(err.message.includes('not found') ? 'error' : 'offline');
+        const localData = localStorage.getItem('lacolle_catalog_products');
+        setProducts(localData ? JSON.parse(localData) : SAMPLE_PRODUCTS);
+      } finally {
+        setLoading(false);
+      }
+    };
+    initApp();
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('lacolle_cart', JSON.stringify(cartItems));
+  }, [cartItems]);
 
   const categories = useMemo(() => {
     const uniqueCategories = Array.from(new Set(products.map(p => p.category)));
@@ -37,35 +96,63 @@ const App: React.FC = () => {
     });
   }, [searchTerm, selectedCategory, products]);
 
-  const handleUpdateProduct = (updatedProduct: Product) => {
-    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-  };
-
-  const handleAdminToggle = () => {
-    if (isEditMode) {
-      setIsEditMode(false);
-    } else {
-      setShowAuthModal(true);
-      setAuthError(false);
-      setPasswordInput('');
+  const handleAskAi = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiQuery.trim()) return;
+    setIsAiLoading(true);
+    setAiResponse('');
+    try {
+      const result = await getSmartSuggestions(aiQuery, products);
+      setAiResponse(result || 'Não consegui encontrar sugestões específicas agora.');
+    } catch (err) {
+      setAiResponse('Desculpe, o assistente está descansando agora. Tente novamente em instantes.');
+    } finally {
+      setIsAiLoading(false);
     }
   };
 
-  const handleAuthSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (passwordInput === 'lili04') {
-      setIsEditMode(true);
-      setShowAuthModal(false);
-      setPasswordInput('');
-    } else {
-      setAuthError(true);
+  const handleUpdateProduct = async (updatedProduct: Product) => {
+    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+    if (supabase && dbStatus === 'connected') {
+      try {
+        await supabase.from('products').upsert({
+          sku: updatedProduct.sku,
+          name: updatedProduct.name,
+          price: updatedProduct.price,
+          stock: updatedProduct.stock,
+          category: updatedProduct.category,
+          image_url: updatedProduct.imageUrl
+        }, { onConflict: 'sku' });
+      } catch (err) { console.error(err); }
+    }
+  };
+
+  const syncAllToCloud = async () => {
+    if (!supabase || dbStatus !== 'connected') {
+      alert("Aguarde a conexão com a nuvem.");
+      return;
+    }
+    if (confirm("Sincronizar todos os produtos locais com o Supabase?")) {
+      setLoading(true);
+      try {
+        for (const product of products) {
+          await supabase.from('products').upsert({
+            sku: product.sku,
+            name: product.name,
+            price: product.price,
+            stock: product.stock,
+            category: product.category,
+            image_url: product.imageUrl
+          }, { onConflict: 'sku' });
+        }
+        alert("Sincronizado!");
+      } catch (err: any) { alert(err.message); }
+      finally { setLoading(false); }
     }
   };
 
   const GITHUB_BASE = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main";
   const LOGO_URL = `${GITHUB_BASE}/Logo-Transparente-TopoPagina.png`;
-  const ICON_CHAT = `${GITHUB_BASE}/04-chat.gif`;
-  const ICON_EMAIL = `${GITHUB_BASE}/03-email.gif`;
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-black">
@@ -74,149 +161,148 @@ const App: React.FC = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowAuthModal(false)} />
           <div className="relative bg-white p-10 rounded-lg shadow-2xl w-full max-w-sm text-center">
-            <h2 className="text-xs font-bold uppercase tracking-[0.4em] mb-10 text-black">Acesso Administrativo</h2>
-            <form onSubmit={handleAuthSubmit} className="space-y-6">
-              <div className="relative">
-                <input 
-                  autoFocus
-                  type="password"
-                  placeholder="........"
-                  value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                  className={`w-full bg-[#3f3f3f] text-white text-center py-3.5 text-sm outline-none transition-all rounded-sm font-bold tracking-widest placeholder-[#5a5a5a] ${
-                    authError ? 'ring-2 ring-red-500' : 'focus:ring-2 focus:ring-peach'
-                  }`}
-                />
-              </div>
-              {authError && <p className="text-[9px] font-bold text-red-500 uppercase tracking-widest mt-2">Senha Incorreta</p>}
-              <button 
-                type="submit"
-                className="w-full bg-black text-white py-4 text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-peach transition-colors shadow-lg active:scale-[0.98]"
-              >
-                Acessar Painel
-              </button>
+            <h2 className="text-xs font-bold uppercase tracking-[0.4em] mb-10">Painel Administrativo</h2>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (passwordInput === 'lili04') { setIsEditMode(true); setShowAuthModal(false); }
+              else setAuthError(true);
+            }} className="space-y-6">
+              <input autoFocus type="password" placeholder="SENHA" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} className="w-full bg-zinc-100 text-center py-4 text-sm outline-none rounded-sm border focus:border-peach" />
+              {authError && <p className="text-[9px] font-bold text-red-500 uppercase">Acesso Negado</p>}
+              <button type="submit" className="w-full bg-black text-white py-4 text-[10px] font-bold uppercase tracking-[0.3em]">Entrar</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* TOP BAR */}
-      <div className="bg-[#f8f9fa] text-zinc-800 py-3 px-4 md:px-10 border-b border-zinc-200 sticky top-0 z-40">
+      {/* TOP BAR STATUS */}
+      <div className="bg-[#f8f9fa] py-3 px-4 md:px-10 border-b border-zinc-200 sticky top-0 z-40">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between">
-          <div className="flex-1 hidden md:block"></div>
-          
-          <div className="flex items-center justify-center gap-8 text-[10px] tracking-wider font-medium">
-            <div className="flex items-center gap-2">
-              <img 
-                src={ICON_CHAT} 
-                alt="" 
-                className="w-5 h-5 object-contain"
-                onError={(e) => (e.currentTarget.style.display = 'none')}
-              />
-              <span className="font-semibold">11 97342-0966</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <img 
-                src={ICON_EMAIL} 
-                alt="" 
-                className="w-5 h-5 object-contain"
-                onError={(e) => (e.currentTarget.style.display = 'none')}
-              />
-              <span className="font-semibold">atendimento@lacolle.com.br</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${dbStatus === 'connected' ? 'bg-green-500' : dbStatus === 'error' ? 'bg-red-500' : 'bg-orange-500'}`}></span>
+            <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">
+              {dbStatus === 'connected' ? 'Nuvem OK' : dbStatus === 'error' ? 'Erro de Tabela' : 'Offline'}
+            </span>
           </div>
-
-          <div className="flex-1 flex justify-end">
-            <button 
-              onClick={handleAdminToggle}
-              className={`px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all shadow-sm ${
-                isEditMode 
-                ? 'bg-black text-white hover:bg-peach' 
-                : 'bg-peach text-white hover:bg-black'
-              }`}
-            >
-              {isEditMode ? 'Sair Edição' : 'Painel Admin'}
+          <div className="flex gap-3">
+            {isEditMode && dbStatus === 'connected' && (
+              <button onClick={syncAllToCloud} className="bg-zinc-800 text-white px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest">Sincronizar</button>
+            )}
+            <button onClick={() => isEditMode ? setIsEditMode(false) : setShowAuthModal(true)} className={`px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${isEditMode ? 'bg-zinc-200' : 'bg-peach text-white'}`}>
+              {isEditMode ? 'Fechar Admin' : 'Admin'}
             </button>
           </div>
         </div>
       </div>
 
-      {/* HEADER */}
-      <header className="bg-peach py-10 px-6 md:px-10">
-        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-3 items-center gap-8">
-          <div className="relative order-2 md:order-1">
-            <input 
-              type="text" 
-              placeholder="PESQUISAR PRODUTO..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-white/20 border border-white/30 rounded-full px-6 py-3 text-[10px] tracking-widest text-white placeholder-white/70 focus:outline-none focus:bg-white/30 transition-all"
-            />
-          </div>
-
-          <div className="flex justify-center order-1 md:order-2">
-            <img 
-              src={LOGO_URL} 
-              alt="La Colle" 
-              className="h-20 object-contain"
-              onError={(e) => {
-                e.currentTarget.src = "https://via.placeholder.com/200x80?text=LA+COLLE";
-              }}
-            />
-          </div>
-
-          <div className="hidden md:flex justify-end order-3">
-             {/* Carrinho removido conforme solicitado */}
+      <header className="bg-peach py-10 px-6">
+        <div className="max-w-[1400px] mx-auto flex flex-col items-center gap-8 text-center">
+          <img src={LOGO_URL} alt="La Colle" className="h-16 md:h-24 object-contain" />
+          <div className="w-full max-w-xl">
+            <input type="text" placeholder="BUSCAR POR NOME OU SKU..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white/20 border border-white/30 rounded-full px-8 py-4 text-xs tracking-widest text-white placeholder-white/70 focus:outline-none focus:bg-white/30" />
           </div>
         </div>
       </header>
 
-      {/* CATEGORIES */}
       <nav className="bg-white border-b border-gray-100 py-2 px-6 sticky top-[53px] z-30">
         <div className="max-w-[1400px] mx-auto flex items-center justify-center gap-8 overflow-x-auto no-scrollbar">
           {categories.map(cat => (
-            <button 
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-2 py-4 text-[10px] uppercase tracking-[0.2em] font-bold border-b-2 transition-all whitespace-nowrap ${
-                selectedCategory === cat ? 'border-peach text-peach' : 'border-transparent text-gray-400 hover:text-black'
-              }`}
-            >
+            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-2 py-4 text-[10px] uppercase tracking-[0.2em] font-bold border-b-2 transition-all ${selectedCategory === cat ? 'border-peach text-peach' : 'border-transparent text-gray-400'}`}>
               {cat}
             </button>
           ))}
         </div>
       </nav>
 
-      {/* MAIN CONTENT */}
       <main className="flex-1 max-w-[1400px] mx-auto w-full px-6 py-8">
-        <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4">
-          <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-400">
-            {selectedCategory === 'Todos' ? 'Coleção Completa' : selectedCategory}
+        {loading ? (
+          <div className="flex flex-col items-center py-40 gap-4">
+             <div className="w-8 h-8 border-2 border-peach border-t-transparent rounded-full animate-spin"></div>
           </div>
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-900 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
-            {filteredProducts.length} {filteredProducts.length === 1 ? 'Produto' : 'Produtos'}
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {filteredProducts.map(product => (
+              <ProductCard 
+                key={product.id} 
+                product={product} 
+                onUpdate={handleUpdateProduct}
+                onAddToCart={() => {
+                  const existing = cartItems.find(item => item.id === product.id);
+                  if (existing) {
+                    setCartItems(prev => prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item));
+                  } else {
+                    setCartItems(prev => [...prev, { ...product, quantity: 1 }]);
+                  }
+                  setIsCartOpen(true);
+                }}
+                isEditMode={isEditMode}
+              />
+            ))}
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
-          {filteredProducts.map(product => (
-            <ProductCard 
-              key={product.id} 
-              product={product} 
-              onUpdate={handleUpdateProduct}
-              isEditMode={isEditMode}
-            />
-          ))}
-        </div>
+        )}
       </main>
 
-      {/* FOOTER */}
-      <footer className="bg-footer-beige py-16 px-6 text-center">
-        <div className="max-w-xs mx-auto opacity-40 mb-8 grayscale">
-            <img src={LOGO_URL} alt="La Colle" className="h-10 mx-auto" />
+      {/* FLOATING ACTION BUTTONS */}
+      <div className="fixed bottom-8 right-8 z-40 flex flex-col gap-4">
+        {!isEditMode && (
+          <button 
+            onClick={() => setIsChatOpen(!isChatOpen)}
+            className="bg-peach text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-all"
+            title="Assistente de Estilo"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+          </button>
+        )}
+        {!isEditMode && cartItems.length > 0 && (
+          <button 
+            onClick={() => setIsCartOpen(true)}
+            className="bg-black text-white p-5 rounded-full shadow-2xl hover:scale-110 transition-all flex items-center gap-3"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+            <span className="text-xs font-bold bg-peach px-2 py-0.5 rounded-full">{cartItems.reduce((s, i) => s + i.quantity, 0)}</span>
+          </button>
+        )}
+      </div>
+
+      {/* IA ASSISTANT OVERLAY */}
+      {isChatOpen && (
+        <div className="fixed bottom-24 right-8 z-50 w-full max-w-xs bg-white rounded-xl shadow-2xl border border-zinc-100 overflow-hidden flex flex-col">
+          <div className="bg-zinc-900 p-4 flex justify-between items-center">
+            <h3 className="text-white text-[10px] font-bold uppercase tracking-widest">Assistente La Colle</h3>
+            <button onClick={() => setIsChatOpen(false)} className="text-zinc-400 hover:text-white">✕</button>
+          </div>
+          <div className="p-4 max-h-60 overflow-y-auto bg-zinc-50 text-[11px] leading-relaxed">
+            {aiResponse ? (
+              <p className="whitespace-pre-wrap">{aiResponse}</p>
+            ) : (
+              <p className="text-zinc-400 italic">Olá! Me pergunte sobre peças para ocasiões especiais ou tendências.</p>
+            )}
+            {isAiLoading && <div className="mt-2 flex gap-1"><span className="w-1.5 h-1.5 bg-peach rounded-full animate-bounce"></span><span className="w-1.5 h-1.5 bg-peach rounded-full animate-bounce delay-75"></span><span className="w-1.5 h-1.5 bg-peach rounded-full animate-bounce delay-150"></span></div>}
+          </div>
+          <form onSubmit={handleAskAi} className="p-3 border-t flex gap-2">
+            <input 
+              type="text" 
+              placeholder="Ex: Brincos para festa..." 
+              value={aiQuery} 
+              onChange={(e) => setAiQuery(e.target.value)}
+              className="flex-1 text-[11px] outline-none bg-transparent"
+            />
+            <button type="submit" disabled={isAiLoading} className="text-peach font-bold text-[10px] uppercase">Enviar</button>
+          </form>
         </div>
-        <p className="text-[9px] text-zinc-500 tracking-[0.4em] uppercase">© 2024 La Colle & CO. Joalheria Contemporânea no Atacado</p>
+      )}
+
+      <Cart 
+        isOpen={isCartOpen} 
+        onClose={() => setIsCartOpen(false)} 
+        items={cartItems} 
+        onRemove={(id) => setCartItems(prev => prev.filter(i => i.id !== id))}
+        onUpdateQty={(id, qty) => setCartItems(prev => prev.map(i => i.id === id ? { ...i, quantity: qty } : i))}
+        config={WHOLESALE_CONFIG}
+      />
+
+      <footer className="bg-footer-beige py-12 text-center mt-auto">
+        <p className="text-[9px] text-zinc-500 tracking-[0.4em] uppercase">© La Colle & CO. Atacado Contemporâneo</p>
       </footer>
     </div>
   );
