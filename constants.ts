@@ -42,7 +42,7 @@ export const SAMPLE_PRODUCTS: Product[] = [
   { id: 'lc-022', sku: 'LC0022', name: 'Pulseira Elo Português com Coração, Cadeado, Trevo e Chave', price: 0, stock: 0, category: 'Pulseiras', imageUrl: createImageUrlBase('Pulseira Elo Português com Coração, Cadeado, Trevo e Chave') },
   { id: 'lc-023', sku: 'LC0023', name: 'Brinco de Argolinha Pequeno Coração Cravejado de Pedras', price: 0, stock: 0, category: 'Brincos', imageUrl: createImageUrlBase('Brinco de Argolinha Pequeno Coração Cravejado de Pedras') },
   { id: 'lc-024', sku: 'LC0024', name: 'Brinco Quadrado Cravejado com Zircônias', price: 0, stock: 1, category: 'Brincos', imageUrl: createImageUrlBase('Brinco Quadrado Cravejado com Zircônias') },
-  { id: 'lc-025', sku: 'LC0025', name: 'Pulseira Cartier La Colle', price: 0, stock: 1, category: 'Pulseiras', imageUrl: createImageUrlBase('Pulseira Cartier La Colle') },
+  { id: 'lc-025', sku: 'LC0025', name: 'Pulseira Cartier 4MM', price: 0, stock: 1, category: 'Pulseiras', imageUrl: createImageUrlBase('Pulseira Cartier 4MM') },
   { id: 'lc-026', sku: 'LC0026', name: 'Brinco Borboleta Verde Eleganza', price: 0, stock: 1, category: 'Brincos', imageUrl: createImageUrlBase('Brinco Borboleta Verde Eleganza') },
   { id: 'lc-027', sku: 'LC0027', name: 'Brinco Argola Vazada Cravejada Cristal', price: 0, stock: 1, category: 'Brincos', imageUrl: createImageUrlBase('Brinco Argola Vazada Cravejada Cristal') },
   { id: 'lc-028', sku: 'LC0028', name: 'Brinco Argola Texturizada com Coração em Cristal', price: 0, stock: 1, category: 'Brincos', imageUrl: createImageUrlBase('Brinco Argola Texturizada com Coração em Cristal') },
@@ -79,5 +79,13 @@ export const SAMPLE_PRODUCTS: Product[] = [
   { id: 'lc-059', sku: 'LC0059', name: 'Brinco de Coração Verde', price: 0, stock: 0, category: 'Brincos', imageUrl: createImageUrlBase('Brinco de Coração Verde') },
   { id: 'lc-060', sku: 'LC0060', name: 'Pulseira Dupla de Elo Português e Pérolas com Pingente', price: 0, stock: 0, category: 'Pulseiras', imageUrl: createImageUrlBase('Pulseira Dupla de Elo Português e Pérolas com Pingente') },
   { id: 'lc-061', sku: 'LC0061', name: 'Colar Triplo 3 Pontos de Luz em Zircônia', price: 0, stock: 0, category: 'Colares', imageUrl: createImageUrlBase('Colar Triplo 3 Pontos de Luz em Zircônia') },
-  { id: 'lc-062', sku: 'LC0062', name: 'Colar Duplo de Coração em Cristal', price: 0, stock: 0, category: 'Colares', imageUrl: createImageUrlBase('Colar Duplo de Coração em Cristal') }
+  { id: 'lc-062', sku: 'LC0062', name: 'Colar Duplo de Coração em Cristal', price: 0, stock: 0, category: 'Colares', imageUrl: createImageUrlBase('Colar Duplo de Coração em Cristal') },
+  { id: 'lc-063', sku: 'LC0063', name: 'Pulseira Espirito Santo Cravejada', price: 0, stock: 1, category: 'Pulseiras', imageUrl: createImageUrlBase('Pulseira Espirito Santo Cravejada') },
+  { id: 'lc-064', sku: 'LC0064', name: 'Pulseira Perolas São Bento', price: 0, stock: 1, category: 'Pulseiras', imageUrl: createImageUrlBase('Pulseira Perolas São Bento') },
+  { id: 'lc-065', sku: 'LC0065', name: 'Pulseira Fita Ondulada', price: 0, stock: 1, category: 'Pulseiras', imageUrl: createImageUrlBase('Pulseira Fita Ondulada') },
+  { id: 'lc-066', sku: 'LC0066', name: 'Pulseira Cordão Baiano', price: 0, stock: 1, category: 'Pulseiras', imageUrl: createImageUrlBase('Pulseira Cordão Baiano') },
+  { id: 'lc-067', sku: 'LC0067', name: 'Pulseira Canutilho', price: 0, stock: 1, category: 'Pulseiras', imageUrl: createImageUrlBase('Pulseira Canutilho') },
+  { id: 'lc-068', sku: 'LC0068', name: 'Pulseira Borboleta Preta', price: 0, stock: 1, category: 'Pulseiras', imageUrl: createImageUrlBase('Pulseira Borboleta Preta') },
+  { id: 'lc-069', sku: 'LC0069', name: 'Pulseira Torcida Diamantada', price: 0, stock: 1, category: 'Pulseiras', imageUrl: createImageUrlBase('Pulseira Torcida Diamantada') },
+  { id: 'lc-070', sku: 'LC0070', name: 'Pulseira Riviera Navete Cristal', price: 0, stock: 1, category: 'Pulseiras', imageUrl: createImageUrlBase('Pulseira Riviera Navete Cristal') }
 ];
