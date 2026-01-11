@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
 
 interface ProductCardProps {
@@ -9,7 +9,29 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onUpdate, isEditMode }) => {
+  // Lista de extensões para tentar carregar
+  const extensions = ['.jpg', '.png', '.webp', '.jpeg'];
+  const [extIndex, setExtIndex] = useState(0);
   const [imgError, setImgError] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState('');
+
+  // Toda vez que o produto mudar ou houver erro, tenta a próxima extensão
+  useEffect(() => {
+    // A URL base vem do constants.ts (sem extensão)
+    const base = product.imageUrl;
+    // v=2.1 para evitar cache do navegador durante os testes
+    setCurrentUrl(`${base}${extensions[extIndex]}?v=2.1`);
+  }, [product.imageUrl, extIndex]);
+
+  const handleImageError = () => {
+    if (extIndex < extensions.length - 1) {
+      console.log(`Falha ao carregar ${extensions[extIndex]} para ${product.sku}, tentando próxima...`);
+      setExtIndex(extIndex + 1);
+    } else {
+      console.error(`Todas as extensões falharam para o produto ${product.sku}`);
+      setImgError(true);
+    }
+  };
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onUpdate({ ...product, price: parseFloat(e.target.value) || 0 });
@@ -32,9 +54,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onUpdate, isEditMode
     }`}>
       <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 rounded-sm">
         <img 
-          src={imgError ? placeholderUrl : product.imageUrl} 
+          src={imgError ? placeholderUrl : currentUrl} 
           alt={product.name}
-          onError={() => setImgError(true)}
+          onError={handleImageError}
           className={`h-full w-full object-cover transition-transform duration-700 ${
             !imgError ? 'group-hover:scale-105' : ''
           }`}

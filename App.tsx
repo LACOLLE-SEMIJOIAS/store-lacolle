@@ -6,9 +6,9 @@ import ProductCard from './components/ProductCard';
 import { supabase, connectionMeta } from './lib/supabase';
 
 const App: React.FC = () => {
-  // Inicializamos com TODOS os itens do SAMPLE_PRODUCTS (62 itens)
+  // Estado inicial SEMPRE com os 62 itens
   const [products, setProducts] = useState<Product[]>(SAMPLE_PRODUCTS);
-  const [dbStatus, setDbStatus] = useState<'connected' | 'offline' | 'error' | 'wrong_key' | 'clerk_error'>('offline');
+  const [dbStatus, setDbStatus] = useState<'connected' | 'offline' | 'error'>('offline');
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
@@ -18,45 +18,38 @@ const App: React.FC = () => {
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState(false);
 
-  // NOVOS CAMINHOS GITHUB ATUALIZADOS com ?v=1 para forçar atualização de cache
+  // Caminhos do GitHub com cache-busting agressivo
   const BASE_LOGO = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/logo/main";
   const BASE_ICONS = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/icons/main";
   
-  const LOGO_TOP = `${BASE_LOGO}/Logo-Transparente-TopoPagina.png?v=1.2`;
-  const LOGO_FOOTER = `${BASE_LOGO}/Logo-Transparente-TopoPagina.png?v=1.2`;
-  const GIF_CHAT = `${BASE_ICONS}/04-chat.gif?v=1.2`;
-  const GIF_EMAIL = `${BASE_ICONS}/03-email.gif?v=1.2`;
+  const LOGO_TOP = `${BASE_LOGO}/Logo-Transparente-TopoPagina.png?v=2.0`;
+  const LOGO_FOOTER = `${BASE_LOGO}/Logo-Transparente-TopoPagina.png?v=2.0`;
+  const GIF_CHAT = `${BASE_ICONS}/04-chat.gif?v=2.0`;
+  const GIF_EMAIL = `${BASE_ICONS}/03-email.gif?v=2.0`;
 
   const syncWithDatabase = async () => {
-    console.log("Iniciando sincronização com banco de dados...");
-    
     if (!supabase) {
-      console.warn("Supabase não configurado. Usando dados locais.");
       setDbStatus('offline');
       return;
     }
 
     try {
-      // Buscamos apenas os campos necessários. O Supabase NÃO deve limitar a 20.
       const { data, error } = await supabase
         .from('products')
-        .select('sku, price, stock')
-        .limit(1000); // Garante que pegue todos
+        .select('sku, price, stock');
 
       if (error) {
-        console.error("Erro Supabase:", error.message);
+        console.error("Supabase Error:", error);
         setDbStatus('error');
-      } else if (data) {
-        console.log(`Sincronizados ${data.length} itens do banco.`);
+      } else if (data && data.length > 0) {
+        // Atualiza os dados mantendo os 62 itens originais
         setProducts(prev => prev.map(p => {
           const match = data.find(db => db.sku === p.sku);
-          // Se achou no banco, atualiza. Se não, mantém o local original.
           return match ? { ...p, price: match.price, stock: match.stock } : p;
         }));
         setDbStatus('connected');
       }
     } catch (err) {
-      console.error("Erro fatal na sincronização:", err);
       setDbStatus('error');
     }
   };
@@ -64,10 +57,10 @@ const App: React.FC = () => {
   useEffect(() => {
     syncWithDatabase();
     
-    // Configura tempo real para atualizações automáticas
+    // Configura o Realtime para atualizações em tempo real
     if (supabase) {
       const channel = supabase
-        .channel('realtime-updates')
+        .channel('db-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
           const newItem = payload.new as any;
           if (newItem?.sku) {
@@ -92,11 +85,11 @@ const App: React.FC = () => {
           name: updatedProduct.name,
           category: updatedProduct.category
         }, { onConflict: 'sku' });
-      } catch (err) { console.error("Erro ao salvar no banco:", err); }
+      } catch (err) { console.error("Error saving:", err); }
     }
   };
 
-  const categories = useMemo(() => ['Todos', ...Array.from(new Set(products.map(p => p.category)))], [products]);
+  const categories = useMemo(() => ['Todos', ...Array.from(new Set(SAMPLE_PRODUCTS.map(p => p.category)))], []);
   
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
@@ -141,12 +134,12 @@ const App: React.FC = () => {
             </div>
             <span className="text-zinc-200 flex-shrink-0">|</span>
             <div className="flex items-center gap-1 md:gap-1.5 flex-shrink-0 bg-white/50 px-1 md:px-2 py-0.5 rounded-sm">
-               <img src={GIF_CHAT} className="w-4 h-4 md:w-5 md:h-5 object-contain" alt="" />
+               <img src={GIF_CHAT} className="w-4 h-4 md:w-5 md:h-5 object-contain" alt="" onError={(e) => (e.currentTarget.style.display = 'none')} />
                <span className="lowercase font-medium tracking-normal text-zinc-500">+55 11 97342-0966</span>
             </div>
             <span className="text-zinc-200 flex-shrink-0">|</span>
             <div className="flex items-center gap-1 md:gap-1.5 flex-shrink-0 bg-white/50 px-1 md:px-2 py-0.5 rounded-sm">
-               <img src={GIF_EMAIL} className="w-4 h-4 md:w-5 md:h-5 object-contain" alt="" />
+               <img src={GIF_EMAIL} className="w-4 h-4 md:w-5 md:h-5 object-contain" alt="" onError={(e) => (e.currentTarget.style.display = 'none')} />
                <span className="lowercase font-medium tracking-normal text-zinc-500">atendimento@lacolle.com.br</span>
             </div>
           </div>
@@ -166,7 +159,7 @@ const App: React.FC = () => {
       <header className="bg-peach py-10 md:py-8 px-4 md:px-10">
         <div className="max-w-[1600px] mx-auto">
           <div className="flex md:hidden flex-col items-center gap-6">
-            <img src={LOGO_TOP} alt="La Colle" className="h-14 object-contain" onError={(e) => console.error("Erro ao carregar Logo Topo:", e)} />
+            <img src={LOGO_TOP} alt="La Colle" className="h-14 object-contain" />
             <div className="w-full max-w-[340px] relative">
               <input 
                 type="text" placeholder="Buscar por Nome ou SKU..." value={searchTerm} 
@@ -219,11 +212,11 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      {/* STATUS DE PRODUTOS */}
+      {/* TEXTO DE CONTEÚDO */}
       <div className="py-12 text-center bg-zinc-50/10">
         <h2 className="text-[11px] text-zinc-400 font-bold uppercase tracking-[0.5em] mb-4">Catálogo Atacado</h2>
         <div className="inline-block bg-white border border-zinc-100 rounded-full px-8 py-2.5 text-[10px] text-zinc-400 font-bold uppercase tracking-widest shadow-sm">
-          {products.length === 0 ? "Carregando..." : `Mostrando ${filteredProducts.length} de ${products.length} itens disponíveis`}
+          Mostrando {filteredProducts.length} de {products.length} itens disponíveis
         </div>
       </div>
 
