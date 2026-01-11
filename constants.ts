@@ -6,12 +6,10 @@ export const WHOLESALE_CONFIG: WholesaleConfig = {
   minQuantityPerItem: 3,
 };
 
-// Se os arquivos estiverem dentro de uma pasta no GitHub, adicione o caminho aqui.
-// Exemplo: se estiver em public/produtos, use ".../main/public/produtos"
-const GITHUB_IMG_BASE = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main/produtos";
+const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main/produtos";
 
-// Função para gerar a URL. Tente trocar .webp por .png ou .jpg se suas imagens tiverem outra extensão.
-const createImageUrl = (name: string) => `${GITHUB_IMG_BASE}/${name.replace(/\s/g, '%20')}.webp`;
+// Função para gerar a URL das imagens via GitHub para máxima compatibilidade
+const createImageUrl = (name: string) => `${GITHUB_RAW_BASE}/${name.replace(/\s/g, '%20')}.webp`;
 
 export const SAMPLE_PRODUCTS: Product[] = [
   { id: 'lc-001', sku: 'LC0001', name: 'Brinco Espiral Vazado', price: 19.90, stock: 50, category: 'Brincos', imageUrl: createImageUrl('Brinco Espiral Vazado') },

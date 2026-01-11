@@ -1,14 +1,15 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Tenta ler do process.env (definido no vite.config) ou do import.meta.env (padrão Vite)
-const supabaseUrl = process.env.VITE_SUPABASE_URL || (import.meta as any).env?.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
+// Use process.env as defined in vite.config.ts to avoid ImportMeta errors in environments where it's not supported
+const url = (typeof process !== 'undefined' ? process.env.VITE_SUPABASE_URL : '') || '';
+const key = (typeof process !== 'undefined' ? process.env.VITE_SUPABASE_ANON_KEY : '') || '';
 
-export const supabase = (supabaseUrl && supabaseAnonKey && supabaseUrl !== 'undefined') 
-  ? createClient(supabaseUrl, supabaseAnonKey)
+// Verify that we have valid strings and not 'undefined' as a string (common when using define in Vite with missing env vars)
+export const supabase = (url && key && url !== 'undefined' && key !== 'undefined') 
+  ? createClient(url, key)
   : null;
 
 if (!supabase) {
-  console.warn("Supabase: Chaves de API não encontradas. O catálogo funcionará em modo offline (armazenamento local).");
+  console.warn("Supabase: Conexão pendente. Certifique-se de que VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY estão configuradas.");
 }
