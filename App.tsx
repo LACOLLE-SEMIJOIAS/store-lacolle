@@ -6,8 +6,8 @@ import ProductCard from './components/ProductCard';
 import { supabase, connectionMeta } from './lib/supabase';
 
 const App: React.FC = () => {
+  // Inicializamos com TODOS os itens do SAMPLE_PRODUCTS (62 itens)
   const [products, setProducts] = useState<Product[]>(SAMPLE_PRODUCTS);
-  const [loading, setLoading] = useState(true);
   const [dbStatus, setDbStatus] = useState<'connected' | 'offline' | 'error' | 'wrong_key' | 'clerk_error'>('offline');
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,58 +18,56 @@ const App: React.FC = () => {
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState(false);
 
-  // NOVOS CAMINHOS GITHUB ATUALIZADOS
+  // NOVOS CAMINHOS GITHUB ATUALIZADOS com ?v=1 para forçar atualização de cache
   const BASE_LOGO = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/logo/main";
   const BASE_ICONS = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/icons/main";
   
-  const LOGO_TOP = `${BASE_LOGO}/Logo-Transparente-TopoPagina.png`;
-  // Agora o logo do rodapé utiliza a mesma imagem do topo conforme solicitado
-  const LOGO_FOOTER = `${BASE_LOGO}/Logo-Transparente-TopoPagina.png`;
-  const GIF_CHAT = `${BASE_ICONS}/04-chat.gif`;
-  const GIF_EMAIL = `${BASE_ICONS}/03-email.gif`;
+  const LOGO_TOP = `${BASE_LOGO}/Logo-Transparente-TopoPagina.png?v=1.2`;
+  const LOGO_FOOTER = `${BASE_LOGO}/Logo-Transparente-TopoPagina.png?v=1.2`;
+  const GIF_CHAT = `${BASE_ICONS}/04-chat.gif?v=1.2`;
+  const GIF_EMAIL = `${BASE_ICONS}/03-email.gif?v=1.2`;
 
   const syncWithDatabase = async () => {
-    if (!connectionMeta.hasUrl || !connectionMeta.hasKey) {
-      setDbStatus('offline');
-      setLoading(false);
-      return;
-    }
-    if (connectionMeta.isClerk) {
-      setDbStatus('clerk_error');
-      setLoading(false);
-      return;
-    }
+    console.log("Iniciando sincronização com banco de dados...");
+    
     if (!supabase) {
-      setDbStatus('error');
-      setLoading(false);
+      console.warn("Supabase não configurado. Usando dados locais.");
+      setDbStatus('offline');
       return;
     }
+
     try {
-      const { data, error } = await supabase.from('products').select('sku, price, stock');
+      // Buscamos apenas os campos necessários. O Supabase NÃO deve limitar a 20.
+      const { data, error } = await supabase
+        .from('products')
+        .select('sku, price, stock')
+        .limit(1000); // Garante que pegue todos
+
       if (error) {
-        if (error.message.includes('JWT') || error.code === '401') setDbStatus('wrong_key');
-        else setDbStatus('error');
-      } else {
-        if (data && data.length > 0) {
-          setProducts(prev => prev.map(p => {
-            const match = data.find(db => db.sku === p.sku);
-            return match ? { ...p, price: match.price, stock: match.stock } : p;
-          }));
-        }
+        console.error("Erro Supabase:", error.message);
+        setDbStatus('error');
+      } else if (data) {
+        console.log(`Sincronizados ${data.length} itens do banco.`);
+        setProducts(prev => prev.map(p => {
+          const match = data.find(db => db.sku === p.sku);
+          // Se achou no banco, atualiza. Se não, mantém o local original.
+          return match ? { ...p, price: match.price, stock: match.stock } : p;
+        }));
         setDbStatus('connected');
       }
     } catch (err) {
+      console.error("Erro fatal na sincronização:", err);
       setDbStatus('error');
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
     syncWithDatabase();
-    if (supabase && dbStatus === 'connected') {
+    
+    // Configura tempo real para atualizações automáticas
+    if (supabase) {
       const channel = supabase
-        .channel('realtime-v2')
+        .channel('realtime-updates')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
           const newItem = payload.new as any;
           if (newItem?.sku) {
@@ -81,7 +79,7 @@ const App: React.FC = () => {
         .subscribe();
       return () => { supabase.removeChannel(channel); };
     }
-  }, [dbStatus]);
+  }, []);
 
   const handleUpdateProduct = async (updatedProduct: Product) => {
     setProducts(prev => prev.map(p => p.sku === updatedProduct.sku ? updatedProduct : p));
@@ -94,11 +92,12 @@ const App: React.FC = () => {
           name: updatedProduct.name,
           category: updatedProduct.category
         }, { onConflict: 'sku' });
-      } catch (err) { console.error(err); }
+      } catch (err) { console.error("Erro ao salvar no banco:", err); }
     }
   };
 
   const categories = useMemo(() => ['Todos', ...Array.from(new Set(products.map(p => p.category)))], [products]);
+  
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
       const search = searchTerm.toLowerCase();
@@ -132,10 +131,9 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* 1. BARRA SUPERIOR (CONFORME FOTO 3) */}
+      {/* 1. BARRA SUPERIOR */}
       <div className="bg-[#f8f9fa] border-b border-zinc-200 py-3 px-4 md:px-10">
         <div className="max-w-[1600px] mx-auto">
-          {/* Linha de Contatos em Linha Única - Gap reduzido de gap-x-3/gap-x-6 para gap-x-1.5/gap-x-3 */}
           <div className="flex items-center gap-x-1.5 md:gap-x-3 text-[8px] md:text-[10px] text-zinc-400 font-bold tracking-widest uppercase overflow-x-auto no-scrollbar whitespace-nowrap justify-center md:justify-start">
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <div className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-500' : 'bg-orange-400'}`}></div>
@@ -153,7 +151,6 @@ const App: React.FC = () => {
             </div>
           </div>
           
-          {/* Botão Admin Centralizado Abaixo no Mobile, À direita no PC */}
           <div className="flex justify-center md:absolute md:top-3 md:right-10 mt-3 md:mt-0">
             <button 
               onClick={() => isEditMode ? setIsEditMode(false) : setShowAuthModal(true)} 
@@ -165,15 +162,14 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. HEADER PÊSSEGO (CONFORME FOTO 3 E INSTRUÇÃO) */}
+      {/* 2. HEADER PÊSSEGO */}
       <header className="bg-peach py-10 md:py-8 px-4 md:px-10">
         <div className="max-w-[1600px] mx-auto">
-          {/* MOBILE: Logo em cima, Busca em baixo */}
           <div className="flex md:hidden flex-col items-center gap-6">
-            <img src={LOGO_TOP} alt="La Colle" className="h-14 object-contain" />
+            <img src={LOGO_TOP} alt="La Colle" className="h-14 object-contain" onError={(e) => console.error("Erro ao carregar Logo Topo:", e)} />
             <div className="w-full max-w-[340px] relative">
               <input 
-                type="text" placeholder="Buscar" value={searchTerm} 
+                type="text" placeholder="Buscar por Nome ou SKU..." value={searchTerm} 
                 onChange={(e) => setSearchTerm(e.target.value)} 
                 className="w-full bg-white/30 border border-white/20 rounded-full px-6 py-3 text-[14px] text-zinc-800 placeholder-zinc-700 focus:outline-none focus:bg-white/40 font-medium" 
               />
@@ -183,16 +179,15 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* DESKTOP: Logo centralizada acima, Busca à direita */}
           <div className="hidden md:grid grid-cols-3 items-center">
-            <div /> {/* Espaço vazio esquerda */}
+            <div />
             <div className="flex justify-center">
               <img src={LOGO_TOP} alt="La Colle" className="h-24 object-contain" />
             </div>
             <div className="flex justify-end">
               <div className="relative w-full max-w-[300px]">
                 <input 
-                  type="text" placeholder="Buscar" value={searchTerm} 
+                  type="text" placeholder="Buscar..." value={searchTerm} 
                   onChange={(e) => setSearchTerm(e.target.value)} 
                   className="w-full bg-white/30 border border-white/30 rounded-full px-6 py-3 text-sm text-zinc-900 placeholder-zinc-800 focus:outline-none focus:bg-white/50 transition-all" 
                 />
@@ -224,11 +219,11 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      {/* TEXTO DE CONTEÚDO */}
+      {/* STATUS DE PRODUTOS */}
       <div className="py-12 text-center bg-zinc-50/10">
         <h2 className="text-[11px] text-zinc-400 font-bold uppercase tracking-[0.5em] mb-4">Catálogo Atacado</h2>
         <div className="inline-block bg-white border border-zinc-100 rounded-full px-8 py-2.5 text-[10px] text-zinc-400 font-bold uppercase tracking-widest shadow-sm">
-          Mostrando {filteredProducts.length} de {products.length} itens
+          {products.length === 0 ? "Carregando..." : `Mostrando ${filteredProducts.length} de ${products.length} itens disponíveis`}
         </div>
       </div>
 
@@ -241,7 +236,7 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* RODAPÉ (CONFORME SOLICITADO) */}
+      {/* RODAPÉ */}
       <footer className="bg-footer-beige py-20 px-6 border-t border-zinc-100">
         <div className="max-w-[1400px] mx-auto flex flex-col items-center text-center">
           <img src={LOGO_FOOTER} alt="La Colle" className="h-16 object-contain mb-8 opacity-70" />

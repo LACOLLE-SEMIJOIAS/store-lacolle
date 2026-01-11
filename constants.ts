@@ -9,8 +9,16 @@ export const WHOLESALE_CONFIG: WholesaleConfig = {
 // NOVO CAMINHO: Repositório 'produtos'
 const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/produtos/main";
 
-// Função para gerar a URL das imagens via GitHub
-const createImageUrl = (name: string) => `${GITHUB_RAW_BASE}/${name.replace(/\s/g, '%20')}.webp`;
+/**
+ * Função para gerar a URL das imagens.
+ * IMPORTANTE: Verifique se suas fotos no GitHub terminam em .jpg, .png ou .webp
+ * Se forem .webp, mude a extensão abaixo.
+ */
+const createImageUrl = (name: string) => {
+  const cleanName = name.trim().replace(/\s/g, '%20');
+  // Adicionamos ?v=1 para evitar cache antigo do navegador
+  return `${GITHUB_RAW_BASE}/${cleanName}.jpg?v=1.1`;
+};
 
 export const SAMPLE_PRODUCTS: Product[] = [
   { id: 'lc-001', sku: 'LC0001', name: 'Brinco Espiral Vazado', price: 19.90, stock: 50, category: 'Brincos', imageUrl: createImageUrl('Brinco Espiral Vazado') },
