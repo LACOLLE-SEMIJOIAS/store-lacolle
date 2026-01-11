@@ -20,6 +20,7 @@ const App: React.FC = () => {
   const ICON_CHAT = `${GITHUB_BASE}/icons/04-chat.gif`;
   const ICON_EMAIL = `${GITHUB_BASE}/icons/03-email.gif`;
 
+  // Link do grupo atualizado conforme solicitado
   const WHATSAPP_GROUP_LINK = "https://chat.whatsapp.com/HBd3fLTNxItBOQbPRZKpky";
   const EMAIL_LINK = "mailto:atendimento@lacolle.com.br";
 
@@ -36,7 +37,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-white text-black font-['Montserrat']">
       
-      {/* 1. BARRA DE TOPO - AJUSTADA CONFORME IMAGEM (MOBILE STACKED, DESKTOP INLINE) */}
+      {/* 1. BARRA DE TOPO - CONTATOS ACIMA E BOTÃO ABAIXO NO MOBILE */}
       <div className="bg-white border-b border-zinc-100 py-4 px-4 md:px-10">
         <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row items-center md:justify-between gap-4 md:gap-2">
           
@@ -49,7 +50,7 @@ const App: React.FC = () => {
               className="flex items-center gap-2 hover:opacity-70 transition-opacity shrink-0"
             >
               <img src={ICON_CHAT} className="w-5 h-5 md:w-6 md:h-6 object-contain" alt="Zap" />
-              <span className="text-[10px] md:text-[11px] text-zinc-600 font-medium tracking-tight whitespace-nowrap">+55 11 97342-0966</span>
+              <span className="text-[11px] text-zinc-600 font-normal tracking-tight whitespace-nowrap">WhatsApp Atacado Lacolle</span>
             </a>
             
             <a 
@@ -57,11 +58,11 @@ const App: React.FC = () => {
               className="flex items-center gap-2 hover:opacity-70 transition-opacity shrink-0"
             >
               <img src={ICON_EMAIL} className="w-5 h-5 md:w-6 md:h-6 object-contain" alt="Mail" />
-              <span className="text-[10px] md:text-[11px] text-zinc-600 font-medium whitespace-nowrap">atendimento@lacolle.com.br</span>
+              <span className="text-[12px] text-zinc-600 font-normal whitespace-nowrap">atendimento@lacolle.com.br</span>
             </a>
           </div>
           
-          {/* Botão Admin: Centralizado abaixo no mobile, direita no desktop */}
+          {/* Botão Admin: Centralizado abaixo no mobile conforme imagem, direita no desktop */}
           <button 
             onClick={() => isEditMode ? setIsEditMode(false) : setShowAuthModal(true)} 
             className="bg-[#f5a27a] text-white px-8 md:px-6 py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] shadow-sm hover:opacity-90 transition-all rounded-sm shrink-0"
