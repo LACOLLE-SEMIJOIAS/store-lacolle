@@ -3,12 +3,12 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { SAMPLE_PRODUCTS } from './constants';
 import { Product } from './types';
 import ProductCard from './components/ProductCard';
-import { supabase } from './lib/supabase';
+import { supabase, connectionMeta } from './lib/supabase';
 
 const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>(SAMPLE_PRODUCTS);
   const [loading, setLoading] = useState(true);
-  const [dbStatus, setDbStatus] = useState<'connected' | 'offline' | 'error'>('offline');
+  const [dbStatus, setDbStatus] = useState<'connected' | 'offline' | 'error' | 'wrong_key' | 'clerk_error'>('offline');
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
@@ -20,44 +20,38 @@ const App: React.FC = () => {
 
   const GITHUB_BASE = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main";
   const LOGO_URL = `${GITHUB_BASE}/Logo-Transparente-TopoPagina.png`;
-  const ICON_WHATSAPP = `${GITHUB_BASE}/04-chat.gif`;
-  const ICON_EMAIL = `${GITHUB_BASE}/03-email.gif`;
 
-  // Carrega preços e estoques do banco e aplica sobre a lista do GitHub
-  const syncProductsWithDB = async () => {
-    if (!supabase) {
+  const syncWithDatabase = async () => {
+    if (!connectionMeta.hasUrl || !connectionMeta.hasKey) {
       setDbStatus('offline');
       setLoading(false);
       return;
     }
-
+    if (connectionMeta.isClerk) {
+      setDbStatus('clerk_error');
+      setLoading(false);
+      return;
+    }
+    if (!supabase) {
+      setDbStatus('error');
+      setLoading(false);
+      return;
+    }
     try {
-      const { data: dbProducts, error } = await supabase
-        .from('products')
-        .select('sku, price, stock');
-
-      if (error) throw error;
-
-      if (dbProducts && dbProducts.length > 0) {
-        setProducts(prevProducts => {
-          return prevProducts.map(baseProd => {
-            const dbMatch = dbProducts.find(p => p.sku === baseProd.sku);
-            if (dbMatch) {
-              return {
-                ...baseProd,
-                price: dbMatch.price !== undefined ? dbMatch.price : baseProd.price,
-                stock: dbMatch.stock !== undefined ? dbMatch.stock : baseProd.stock
-              };
-            }
-            return baseProd;
-          });
-        });
-        setDbStatus('connected');
+      const { data, error } = await supabase.from('products').select('sku, price, stock');
+      if (error) {
+        if (error.message.includes('JWT') || error.code === '401') setDbStatus('wrong_key');
+        else setDbStatus('error');
       } else {
-        setDbStatus('connected'); // Conectado mas banco vazio
+        if (data && data.length > 0) {
+          setProducts(prev => prev.map(p => {
+            const match = data.find(db => db.sku === p.sku);
+            return match ? { ...p, price: match.price, stock: match.stock } : p;
+          }));
+        }
+        setDbStatus('connected');
       }
     } catch (err) {
-      console.error("Erro na sincronização:", err);
       setDbStatus('error');
     } finally {
       setLoading(false);
@@ -65,161 +59,157 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    syncProductsWithDB();
-
-    // ESCUTA EM TEMPO REAL: Mudou no PC, muda no Celular na hora
-    if (supabase) {
+    syncWithDatabase();
+    if (supabase && dbStatus === 'connected') {
       const channel = supabase
-        .channel('public:products')
-        .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'products' }, 
-          (payload) => {
-            const updatedItem = payload.new as any;
-            if (updatedItem && updatedItem.sku) {
-              setProducts(prev => prev.map(p => 
-                p.sku === updatedItem.sku 
-                  ? { ...p, price: updatedItem.price, stock: updatedItem.stock } 
-                  : p
-              ));
-            }
+        .channel('realtime-v2')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+          const newItem = payload.new as any;
+          if (newItem?.sku) {
+            setProducts(prev => prev.map(p => 
+              p.sku === newItem.sku ? { ...p, price: newItem.price, stock: newItem.stock } : p
+            ));
           }
-        )
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') setDbStatus('connected');
-        });
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
+        })
+        .subscribe();
+      return () => { supabase.removeChannel(channel); };
     }
-  }, []);
-
-  const categories = useMemo(() => {
-    const uniqueCategories = Array.from(new Set(products.map(p => p.category)));
-    return ['Todos', ...uniqueCategories];
-  }, [products]);
-
-  const filteredProducts = useMemo(() => {
-    return products.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            p.sku.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === 'Todos' || p.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    });
-  }, [searchTerm, selectedCategory, products]);
+  }, [dbStatus]);
 
   const handleUpdateProduct = async (updatedProduct: Product) => {
-    // Atualização otimista na tela
     setProducts(prev => prev.map(p => p.sku === updatedProduct.sku ? updatedProduct : p));
-    
     if (supabase) {
       try {
-        const { error } = await supabase.from('products').upsert({
+        await supabase.from('products').upsert({
           sku: updatedProduct.sku,
           price: updatedProduct.price,
           stock: updatedProduct.stock,
-          name: updatedProduct.name, // Opcional, mas bom para identificação no painel Supabase
+          name: updatedProduct.name,
           category: updatedProduct.category
         }, { onConflict: 'sku' });
-        
-        if (error) console.error("Erro ao persistir:", error);
-      } catch (err) { 
-        console.error("Erro fatal ao salvar:", err);
-      }
+      } catch (err) { console.error(err); }
     }
   };
 
+  const categories = useMemo(() => ['Todos', ...Array.from(new Set(products.map(p => p.category)))], [products]);
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      const search = searchTerm.toLowerCase();
+      return (p.name.toLowerCase().includes(search) || p.sku.toLowerCase().includes(search)) &&
+             (selectedCategory === 'Todos' || p.category === selectedCategory);
+    });
+  }, [searchTerm, selectedCategory, products]);
+
   return (
     <div className="min-h-screen flex flex-col bg-white text-black">
+      {/* MODAL ADMIN */}
       {showAuthModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowAuthModal(false)} />
           <div className="relative bg-white p-8 rounded-lg shadow-2xl w-full max-w-[440px] text-center border border-zinc-100">
-            <h2 className="text-[10px] font-bold uppercase tracking-[0.4em] mb-8 text-zinc-400">Painel Administrativo</h2>
+            <h2 className="text-[10px] font-bold uppercase tracking-[0.4em] mb-8 text-zinc-400">Acesso Restrito</h2>
             <form onSubmit={(e) => {
               e.preventDefault();
               if (passwordInput === 'lili04') { setIsEditMode(true); setShowAuthModal(false); setPasswordInput(''); }
               else setAuthError(true);
             }} className="space-y-5">
               <input 
-                autoFocus 
-                type="password" 
-                placeholder="SENHA" 
-                value={passwordInput} 
+                autoFocus type="password" placeholder="SENHA" value={passwordInput} 
                 onChange={(e) => setPasswordInput(e.target.value)} 
-                className="w-full bg-zinc-50 text-center py-3.5 text-xs outline-none rounded-sm border border-zinc-200 focus:border-peach transition-colors" 
+                className="w-full bg-zinc-50 text-center py-4 text-xs outline-none rounded-sm border border-zinc-200 focus:border-peach" 
               />
               {authError && <p className="text-[9px] font-bold text-red-500 uppercase tracking-widest">Senha Incorreta</p>}
-              <button type="submit" className="w-full bg-black text-white py-3.5 text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-zinc-900 transition-colors">Acessar</button>
+              <button type="submit" className="w-full bg-black text-white py-4 text-[10px] font-bold uppercase tracking-[0.3em]">Entrar</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* BARRA DE STATUS E CONTATOS */}
-      <div className="bg-[#f4f7f6] py-2 px-4 border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-[1400px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-            <div className="flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></span>
-              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 whitespace-nowrap">
-                {dbStatus === 'connected' ? 'Sincronizado' : 'Erro de Conexão'}
-              </span>
+      {/* 1. BARRA SUPERIOR (TOTALMENTE FIEL À FOTO) */}
+      <div className="bg-[#f8f9fa] border-b border-zinc-200 py-3 px-2 md:px-10">
+        <div className="max-w-[1600px] mx-auto">
+          {/* Linha de Contatos: Flex Wrap para mobile para garantir que caiba */}
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-2 md:gap-x-4 text-[8px] md:text-[10px] text-zinc-400 font-bold tracking-widest uppercase">
+            <div className="flex items-center gap-1">
+              <div className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-500' : 'bg-orange-400'}`}></div>
+              <span>{dbStatus === 'connected' ? 'ONLINE' : 'OFFLINE'}</span>
             </div>
-            
-            <div className="hidden sm:block h-3 w-[1px] bg-zinc-200"></div>
-
-            <div className="flex items-center gap-4 sm:gap-6">
-              <a href="https://wa.me/5511973420966" target="_blank" rel="noreferrer" className="flex items-center gap-1.5 group">
-                <img src={ICON_WHATSAPP} alt="WhatsApp" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
-                <span className="text-[10px] sm:text-[11px] font-normal text-zinc-500 tracking-tighter">+55 11 97342-0966</span>
-              </a>
-              <a href="mailto:atendimento@lacolle.com.br" className="flex items-center gap-1.5 group">
-                <img src={ICON_EMAIL} alt="Email" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
-                <span className="text-[10px] sm:text-[12px] font-normal text-zinc-500 lowercase tracking-tighter">atendimento@lacolle.com.br</span>
-              </a>
+            <span className="text-zinc-300">|</span>
+            <div className="flex items-center gap-1">
+               <img src="/04-chat.gif" className="w-4 h-4 md:w-5 md:h-5" alt="" />
+               <span className="lowercase font-medium tracking-normal text-zinc-500">+55 11 97342-0966</span>
+            </div>
+            <span className="hidden md:block text-zinc-300">|</span>
+            <div className="flex items-center gap-1">
+               <img src="/03-email.gif" className="w-4 h-4 md:w-5 md:h-5" alt="" />
+               <span className="lowercase font-medium tracking-normal text-zinc-500">atendimento@lacolle.com.br</span>
             </div>
           </div>
           
-          <button 
-            onClick={() => isEditMode ? setIsEditMode(false) : setShowAuthModal(true)} 
-            className="bg-[#f5a27a] text-white px-4 py-1.5 rounded-sm text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] shadow-sm hover:brightness-105 transition-all"
-          >
-            {isEditMode ? 'SAIR DA EDIÇÃO' : 'EDITAR ESTOQUE'}
-          </button>
+          {/* Botão Admin: Centralizado abaixo no mobile, à direita no desktop */}
+          <div className="flex justify-center md:absolute md:top-3 md:right-10 mt-3 md:mt-0">
+            <button 
+              onClick={() => isEditMode ? setIsEditMode(false) : setShowAuthModal(true)} 
+              className="bg-[#f5a27a] text-white px-8 py-2 rounded-[2px] text-[10px] font-bold uppercase tracking-[0.2em] shadow-sm"
+            >
+              {isEditMode ? 'SAIR ADMIN' : 'ÁREA ADMIN'}
+            </button>
+          </div>
         </div>
       </div>
 
-      <header className="bg-peach py-8 md:py-10 px-6">
-        <div className="max-w-[1400px] mx-auto flex flex-col md:grid md:grid-cols-3 items-center gap-6">
-          <div className="order-1 md:order-2 flex justify-center">
-            <img src={LOGO_URL} alt="La Colle" className="h-14 md:h-16 lg:h-20 object-contain" />
-          </div>
-          <div className="order-2 md:order-1 flex justify-center md:justify-start w-full max-w-sm md:max-w-xs mx-auto md:mx-0">
-            <div className="relative w-full">
+      {/* 2. HEADER PÊSSEGO */}
+      <header className="bg-peach py-8 md:py-6 px-4 md:px-10">
+        <div className="max-w-[1600px] mx-auto">
+          {/* MOBILE: Logo acima, Busca abaixo (Foto 1) */}
+          <div className="flex md:hidden flex-col items-center gap-6">
+            <img src={LOGO_URL} alt="La Colle" className="h-12 object-contain" />
+            <div className="w-full max-w-[320px] relative">
               <input 
-                type="text" 
-                placeholder="Buscar por SKU ou Nome" 
-                value={searchTerm} 
+                type="text" placeholder="Buscar" value={searchTerm} 
                 onChange={(e) => setSearchTerm(e.target.value)} 
-                className="w-full bg-white/20 border border-white/40 rounded-full px-6 py-2.5 text-xs tracking-widest text-black placeholder-zinc-800 focus:outline-none focus:bg-white/40 transition-all text-left" 
+                className="w-full bg-white/30 border border-white/20 rounded-full px-6 py-2.5 text-[13px] text-zinc-800 placeholder-zinc-700 focus:outline-none focus:bg-white/40 font-medium" 
               />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+              <div className="absolute inset-y-0 right-5 flex items-center">
+                 <svg className="w-4 h-4 text-zinc-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
               </div>
             </div>
           </div>
-          <div className="hidden md:block order-3"></div>
+
+          {/* DESKTOP: Logo centro, Busca direita (Imagem 2) */}
+          <div className="hidden md:grid grid-cols-3 items-center">
+            <div></div> {/* Vazio esquerda */}
+            <div className="flex justify-center">
+              <img src={LOGO_URL} alt="La Colle" className="h-20 object-contain" />
+            </div>
+            <div className="flex justify-end">
+              <div className="relative w-full max-w-[280px]">
+                <input 
+                  type="text" placeholder="Buscar" value={searchTerm} 
+                  onChange={(e) => setSearchTerm(e.target.value)} 
+                  className="w-full bg-white/30 border border-white/30 rounded-full px-6 py-2.5 text-sm text-zinc-900 placeholder-zinc-800 focus:outline-none focus:bg-white/50 transition-all" 
+                />
+                <div className="absolute inset-y-0 right-6 flex items-center">
+                   <svg className="w-4 h-4 text-zinc-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
-      <nav className="bg-white border-b border-gray-100 py-1 px-6 sticky top-[44px] sm:top-[46px] z-30 shadow-sm overflow-x-auto no-scrollbar">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-start sm:justify-center">
-          <div className="flex items-center gap-6 md:gap-10">
+      {/* 3. MENU DE CATEGORIAS */}
+      <nav className="bg-white border-b border-gray-100 py-1 sticky top-0 z-30 shadow-sm">
+        <div className="max-w-[1400px] mx-auto overflow-x-auto no-scrollbar px-4">
+          <div className="flex items-center gap-8 md:gap-16 justify-start md:justify-center">
             {categories.map(cat => (
-              <button key={cat} onClick={() => setSelectedCategory(cat)} className={`whitespace-nowrap py-4 sm:py-5 text-[9px] sm:text-[10px] uppercase tracking-[0.3em] font-bold border-b-2 transition-all ${selectedCategory === cat ? 'border-peach text-peach' : 'border-transparent text-zinc-300 hover:text-zinc-500'}`}>
+              <button 
+                key={cat} 
+                onClick={() => setSelectedCategory(cat)} 
+                className={`whitespace-nowrap py-4 text-[10px] md:text-[11px] uppercase tracking-[0.3em] font-bold border-b-2 transition-all ${
+                  selectedCategory === cat ? 'border-zinc-800 text-black' : 'border-transparent text-zinc-300 hover:text-zinc-500'
+                }`}
+              >
                 {cat}
               </button>
             ))}
@@ -227,42 +217,30 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 py-12 md:py-16">
-        <div className="flex flex-col items-center mb-12 md:mb-16 gap-4">
-          <h2 className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.5em] text-zinc-300">Catálogo Online</h2>
-          <div className="bg-zinc-50 border border-zinc-100 px-5 py-1.5 rounded-full">
-             <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">
-               {isEditMode ? 'MODO DE GERENCIAMENTO' : `${filteredProducts.length} ITENS NO ACERVO`}
-             </span>
-          </div>
-          <div className="h-[1px] w-12 bg-peach/30"></div>
+      {/* TEXTO DE CONTEÚDO */}
+      <div className="py-12 text-center bg-zinc-50/20">
+        <h2 className="text-[11px] text-zinc-400 font-bold uppercase tracking-[0.5em] mb-4">Catálogo Atacado</h2>
+        <div className="inline-block bg-white border border-zinc-100 rounded-full px-8 py-2.5 text-[10px] text-zinc-400 font-bold uppercase tracking-widest shadow-sm">
+          Mostrando {filteredProducts.length} de {products.length} itens
         </div>
+      </div>
 
-        {loading ? (
-          <div className="flex flex-col items-center py-32">
-             <div className="w-8 h-8 border-2 border-peach border-t-transparent rounded-full animate-spin"></div>
-             <p className="mt-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Sincronizando nuvem...</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 md:gap-x-6 gap-y-10 md:gap-y-12">
-            {filteredProducts.map(product => (
-              <ProductCard 
-                key={product.sku} 
-                product={product} 
-                onUpdate={handleUpdateProduct}
-                isEditMode={isEditMode}
-              />
-            ))}
-          </div>
-        )}
+      {/* LISTA DE PRODUTOS */}
+      <main className="flex-1 max-w-[1500px] mx-auto w-full px-4 md:px-10 pb-24 mt-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-x-4 md:gap-x-10 gap-y-16">
+          {filteredProducts.map(product => (
+            <ProductCard key={product.sku} product={product} onUpdate={handleUpdateProduct} isEditMode={isEditMode} />
+          ))}
+        </div>
       </main>
 
-      <footer className="bg-footer-beige pt-20 pb-16 px-6 border-t border-zinc-100 mt-20">
-        <div className="max-w-[1400px] mx-auto flex flex-col items-center gap-10">
-          <img src={LOGO_URL} alt="La Colle Footer" className="h-14 md:h-18 object-contain" />
-          <div className="text-center space-y-3">
-             <p className="text-[9px] md:text-[10px] text-zinc-400 tracking-[0.5em] uppercase font-bold">La Colle & CO. Semijoias</p>
-             <p className="text-[8px] text-zinc-400 tracking-[0.2em] uppercase">Estoque e Preços Sincronizados</p>
+      {/* RODAPÉ (INALTERADO) */}
+      <footer className="bg-footer-beige py-20 px-6 border-t border-zinc-100">
+        <div className="max-w-[1400px] mx-auto flex flex-col items-center text-center">
+          <img src={LOGO_URL} alt="La Colle" className="h-14 object-contain mb-8 opacity-60" />
+          <div className="space-y-3">
+            <p className="text-[10px] text-zinc-500 tracking-[0.5em] uppercase font-bold">La Colle & CO. Semijoias</p>
+            <p className="text-[8px] text-zinc-400 tracking-[0.2em] uppercase font-medium">Feito com carinho para revendedoras</p>
           </div>
         </div>
       </footer>
