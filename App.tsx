@@ -18,60 +18,77 @@ const App: React.FC = () => {
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState(false);
 
-  // Ativos do GitHub
   const GITHUB_BASE = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main";
   const LOGO_URL = `${GITHUB_BASE}/Logo-Transparente-TopoPagina.png`;
-  
-  // Ícones GIF de Contato
   const ICON_WHATSAPP = `${GITHUB_BASE}/04-chat.gif`;
   const ICON_EMAIL = `${GITHUB_BASE}/03-email.gif`;
 
-  const loadAllProducts = async () => {
+  // Função para carregar dados do banco e mesclar com a lista base
+  const syncProductsWithDB = async () => {
     if (!supabase) {
       setDbStatus('offline');
+      setLoading(false);
       return;
     }
 
     try {
-      const { data, error } = await supabase
+      const { data: dbProducts, error } = await supabase
         .from('products')
-        .select('*')
-        .order('sku', { ascending: true });
+        .select('sku, price, stock, name, category');
 
       if (error) throw error;
 
-      if (data && data.length > 0) {
-        const mappedData: Product[] = data.map(dbItem => {
-          const fileName = dbItem.name || dbItem.sku;
-          const imageUrl = `${GITHUB_BASE}/produtos/${fileName.replace(/\s/g, '%20')}.webp`;
-          
-          return {
-            id: dbItem.id.toString(),
-            sku: dbItem.sku,
-            name: dbItem.name,
-            price: dbItem.price,
-            stock: dbItem.stock,
-            category: dbItem.category || 'Geral',
-            imageUrl: imageUrl
-          };
+      if (dbProducts) {
+        setProducts(prevProducts => {
+          return prevProducts.map(baseProd => {
+            const dbMatch = dbProducts.find(p => p.sku === baseProd.sku);
+            if (dbMatch) {
+              return {
+                ...baseProd,
+                price: dbMatch.price ?? baseProd.price,
+                stock: dbMatch.stock ?? baseProd.stock,
+                // Mantemos o nome e categoria do DB se existirem para consistência total
+                name: dbMatch.name ?? baseProd.name,
+                category: dbMatch.category ?? baseProd.category
+              };
+            }
+            return baseProd;
+          });
         });
-        
-        setProducts(mappedData);
-        setDbStatus('connected');
       }
+      setDbStatus('connected');
     } catch (err) {
-      console.error("Erro ao carregar acervo:", err);
+      console.error("Erro na sincronização:", err);
       setDbStatus('error');
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      await loadAllProducts();
-      setLoading(false);
-    };
-    init();
+    syncProductsWithDB();
+
+    // CONFIGURAÇÃO REALTIME: Ouve mudanças no banco e atualiza a tela na hora
+    if (supabase) {
+      const channel = supabase
+        .channel('db-changes')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'products' }, 
+          (payload) => {
+            const updatedItem = payload.new as any;
+            setProducts(prev => prev.map(p => 
+              p.sku === updatedItem.sku 
+                ? { ...p, price: updatedItem.price, stock: updatedItem.stock } 
+                : p
+            ));
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, []);
 
   const categories = useMemo(() => {
@@ -89,17 +106,24 @@ const App: React.FC = () => {
   }, [searchTerm, selectedCategory, products]);
 
   const handleUpdateProduct = async (updatedProduct: Product) => {
-    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+    // Atualiza localmente primeiro (otimista)
+    setProducts(prev => prev.map(p => p.sku === updatedProduct.sku ? updatedProduct : p));
+    
     if (supabase) {
       try {
-        await supabase.from('products').upsert({
+        const { error } = await supabase.from('products').upsert({
           sku: updatedProduct.sku,
           price: updatedProduct.price,
           stock: updatedProduct.stock,
           name: updatedProduct.name,
           category: updatedProduct.category
         }, { onConflict: 'sku' });
-      } catch (err) { console.error(err); }
+        
+        if (error) throw error;
+      } catch (err) { 
+        console.error("Erro ao salvar no banco:", err);
+        // Em caso de erro, poderíamos reverter o estado aqui, mas o Realtime corrigirá na próxima sync
+      }
     }
   };
 
@@ -112,7 +136,7 @@ const App: React.FC = () => {
             <h2 className="text-[10px] font-bold uppercase tracking-[0.4em] mb-8 text-zinc-400">Painel Administrativo</h2>
             <form onSubmit={(e) => {
               e.preventDefault();
-              if (passwordInput === 'lili04') { setIsEditMode(true); setShowAuthModal(false); }
+              if (passwordInput === 'lili04') { setIsEditMode(true); setShowAuthModal(false); setPasswordInput(''); }
               else setAuthError(true);
             }} className="space-y-5">
               <input 
@@ -130,14 +154,14 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* BARRA DE STATUS E CONTATOS - RESPONSIVA */}
+      {/* BARRA DE STATUS E CONTATOS */}
       <div className="bg-[#f4f7f6] py-2 px-4 border-b border-gray-100 sticky top-0 z-40">
         <div className="max-w-[1400px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
             <div className="flex items-center gap-1.5">
               <span className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-400' : 'bg-[#f5a27a]'}`}></span>
               <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 whitespace-nowrap">
-                {dbStatus === 'connected' ? 'ONLINE' : 'OFFLINE'}
+                {dbStatus === 'connected' ? 'Sincronizado' : 'Modo Offline'}
               </span>
             </div>
             
@@ -159,24 +183,21 @@ const App: React.FC = () => {
             onClick={() => isEditMode ? setIsEditMode(false) : setShowAuthModal(true)} 
             className="bg-[#f5a27a] text-white px-4 py-1.5 rounded-sm text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] shadow-sm hover:brightness-105 transition-all"
           >
-            {isEditMode ? 'SAIR MODO EDIÇÃO' : 'ÁREA ADMIN'}
+            {isEditMode ? 'ENCERRAR EDIÇÃO' : 'GERENCIAR ESTOQUE'}
           </button>
         </div>
       </div>
 
-      {/* HEADER: LOGO E BUSCA CENTRALIZADOS NO MOBILE */}
       <header className="bg-peach py-8 md:py-10 px-6">
         <div className="max-w-[1400px] mx-auto flex flex-col md:grid md:grid-cols-3 items-center gap-6">
-          
           <div className="order-1 md:order-2 flex justify-center">
             <img src={LOGO_URL} alt="La Colle" className="h-14 md:h-16 lg:h-20 object-contain" />
           </div>
-
           <div className="order-2 md:order-1 flex justify-center md:justify-start w-full max-w-sm md:max-w-xs mx-auto md:mx-0">
             <div className="relative w-full">
               <input 
                 type="text" 
-                placeholder="Buscar" 
+                placeholder="Buscar por SKU ou Nome" 
                 value={searchTerm} 
                 onChange={(e) => setSearchTerm(e.target.value)} 
                 className="w-full bg-white/20 border border-white/40 rounded-full px-6 py-2.5 text-xs tracking-widest text-black placeholder-zinc-800 focus:outline-none focus:bg-white/40 transition-all text-left" 
@@ -188,12 +209,10 @@ const App: React.FC = () => {
               </div>
             </div>
           </div>
-
           <div className="hidden md:block order-3"></div>
         </div>
       </header>
 
-      {/* NAVEGAÇÃO CATEGORIAS */}
       <nav className="bg-white border-b border-gray-100 py-1 px-6 sticky top-[44px] sm:top-[46px] z-30 shadow-sm overflow-x-auto no-scrollbar">
         <div className="max-w-[1400px] mx-auto flex items-center justify-start sm:justify-center">
           <div className="flex items-center gap-6 md:gap-10">
@@ -211,7 +230,7 @@ const App: React.FC = () => {
           <h2 className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.5em] text-zinc-300">Catálogo Atacado</h2>
           <div className="bg-zinc-50 border border-zinc-100 px-5 py-1.5 rounded-full">
              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">
-               Mostrando {filteredProducts.length} de {products.length} itens
+               {isEditMode ? 'MODO DE EDIÇÃO ATIVO' : `Mostrando ${filteredProducts.length} itens`}
              </span>
           </div>
           <div className="h-[1px] w-12 bg-peach/30"></div>
@@ -220,12 +239,13 @@ const App: React.FC = () => {
         {loading ? (
           <div className="flex flex-col items-center py-32">
              <div className="w-8 h-8 border-2 border-peach border-t-transparent rounded-full animate-spin"></div>
+             <p className="mt-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Sincronizando Dados...</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 md:gap-x-6 gap-y-10 md:gap-y-12">
             {filteredProducts.map(product => (
               <ProductCard 
-                key={product.id} 
+                key={product.sku} 
                 product={product} 
                 onUpdate={handleUpdateProduct}
                 isEditMode={isEditMode}
@@ -235,13 +255,12 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* RODAPÉ BEGE (OFICIAL) */}
       <footer className="bg-footer-beige pt-20 pb-16 px-6 border-t border-zinc-100 mt-20">
         <div className="max-w-[1400px] mx-auto flex flex-col items-center gap-10">
-          <img src={LOGO_URL} alt="La Colle Footer" className="h-14 md:h-18 object-contain hover:scale-105 transition-transform duration-500" />
+          <img src={LOGO_URL} alt="La Colle Footer" className="h-14 md:h-18 object-contain" />
           <div className="text-center space-y-3">
              <p className="text-[9px] md:text-[10px] text-zinc-400 tracking-[0.5em] uppercase font-bold">La Colle & CO. Semijoias</p>
-             <p className="text-[8px] text-zinc-400 tracking-[0.2em] uppercase">Feito com carinho para revendedoras</p>
+             <p className="text-[8px] text-zinc-400 tracking-[0.2em] uppercase">Gestão de Preços e Estoque Cloud</p>
           </div>
         </div>
       </footer>
