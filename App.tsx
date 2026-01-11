@@ -5,10 +5,9 @@ import { Product, CartItem } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
 import { supabase } from './lib/supabase';
-import { getSmartSuggestions } from './services/geminiService';
 
 const App: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(SAMPLE_PRODUCTS);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -22,58 +21,50 @@ const App: React.FC = () => {
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState(false);
 
-  // Caminho absoluto corrigido para imagens do GitHub
-  const GITHUB_BASE = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main";
-  const LOGO_URL = `${GITHUB_BASE}/Logo-Transparente-TopoPagina.png`;
-  const FOOTER_LOGO_URL = `${GITHUB_BASE}/Logo-TransparenteRodape-Pagina.png`;
+  // URLs fixas e seguras para os ativos da marca
+  const LOGO_URL = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main/Logo-Transparente-TopoPagina.png";
+  const FOOTER_LOGO_URL = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main/Logo-TransparenteRodape-Pagina.png";
 
-  const initApp = async () => {
+  const syncPricesAndStock = async () => {
+    if (!supabase) return;
+
     try {
-      setLoading(true);
-      const savedCart = localStorage.getItem('lacolle_cart');
-      if (savedCart) setCartItems(JSON.parse(savedCart));
-
-      if (!supabase) {
-        console.warn("Supabase não encontrado. Usando dados locais.");
-        setProducts(SAMPLE_PRODUCTS);
-        setDbStatus('offline');
-        return;
-      }
-
       const { data, error } = await supabase
         .from('products')
-        .select('*')
-        .order('sku', { ascending: true });
+        .select('sku, price, stock');
 
       if (error) throw error;
 
       if (data && data.length > 0) {
-        const mappedData = data.map(item => ({
-          id: item.id.toString(),
-          sku: item.sku,
-          name: item.name,
-          price: item.price,
-          stock: item.stock,
-          category: item.category,
-          imageUrl: item.image_url
+        setProducts(prev => prev.map(localProd => {
+          const dbItem = data.find(d => d.sku === localProd.sku);
+          if (dbItem) {
+            return {
+              ...localProd,
+              price: dbItem.price || localProd.price,
+              stock: dbItem.stock !== undefined ? dbItem.stock : localProd.stock
+            };
+          }
+          return localProd;
         }));
-        setProducts(mappedData);
-        setDbStatus('connected');
-      } else {
-        setProducts(SAMPLE_PRODUCTS);
         setDbStatus('connected');
       }
-    } catch (err: any) {
-      console.error("Erro Conexão:", err);
+    } catch (err) {
+      console.error("Erro ao sincronizar preços:", err);
       setDbStatus('error');
-      setProducts(SAMPLE_PRODUCTS);
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
-    initApp();
+    const init = async () => {
+      setLoading(true);
+      const savedCart = localStorage.getItem('lacolle_cart');
+      if (savedCart) setCartItems(JSON.parse(savedCart));
+      
+      await syncPricesAndStock();
+      setLoading(false);
+    };
+    init();
   }, []);
 
   useEffect(() => {
@@ -96,15 +87,14 @@ const App: React.FC = () => {
 
   const handleUpdateProduct = async (updatedProduct: Product) => {
     setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-    if (supabase && dbStatus === 'connected') {
+    if (supabase) {
       try {
         await supabase.from('products').upsert({
           sku: updatedProduct.sku,
-          name: updatedProduct.name,
           price: updatedProduct.price,
           stock: updatedProduct.stock,
-          category: updatedProduct.category,
-          image_url: updatedProduct.imageUrl
+          name: updatedProduct.name, // Mantém backup do nome no banco
+          category: updatedProduct.category
         }, { onConflict: 'sku' });
       } catch (err) { console.error(err); }
     }
@@ -130,69 +120,62 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* TOP STATUS BAR */}
-      <div className="bg-[#f8f9fa] py-2 px-6 md:px-10 border-b border-zinc-200 sticky top-0 z-40">
+      {/* BARRA DE STATUS DISCRETA */}
+      <div className="bg-[#fdf2f0] py-1.5 px-6 border-b border-peach/10 sticky top-0 z-40">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className={`w-2.5 h-2.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : dbStatus === 'error' ? 'bg-red-500' : 'bg-orange-500'}`}></span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              {dbStatus === 'connected' ? 'Catálogo Online' : dbStatus === 'error' ? 'Erro de Conexão' : 'Usando Banco Local'}
+          <div className="flex items-center gap-2">
+            <span className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-400' : 'bg-orange-300'}`}></span>
+            <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">
+              {dbStatus === 'connected' ? 'Preços Sincronizados' : 'Modo Offline'}
             </span>
-            {dbStatus !== 'connected' && (
-              <button onClick={initApp} className="text-[9px] underline uppercase font-bold text-peach ml-2">Atualizar</button>
-            )}
           </div>
-          <button onClick={() => isEditMode ? setIsEditMode(false) : setShowAuthModal(true)} className={`px-4 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest transition-colors ${isEditMode ? 'bg-zinc-200 text-zinc-600' : 'bg-peach text-white shadow-sm hover:bg-[#e08d66]'}`}>
-            {isEditMode ? 'Sair Admin' : 'Admin'}
+          <button onClick={() => isEditMode ? setIsEditMode(false) : setShowAuthModal(true)} className="text-[9px] font-bold uppercase tracking-widest text-peach/60 hover:text-peach transition-colors">
+            {isEditMode ? 'Sair do Modo Edição' : 'Área Admin'}
           </button>
         </div>
       </div>
 
-      {/* HEADER SECTION */}
-      <header className="bg-peach py-12 px-6 shadow-md">
-        <div className="max-w-[1400px] mx-auto flex flex-col items-center gap-10">
-          <div className="w-full flex flex-col md:flex-row items-center justify-center gap-8 md:gap-20">
-            <div className="w-full max-w-md order-2 md:order-1">
-              <input 
-                type="text" 
-                placeholder="BUSCAR POR NOME OU SKU..." 
-                value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)} 
-                className="w-full bg-white/20 border border-white/40 rounded-full px-8 py-3.5 text-xs tracking-widest text-white placeholder-white/80 focus:outline-none focus:bg-white/30 transition-all shadow-inner" 
-              />
-            </div>
-            <div className="order-1 md:order-2">
-              <img src={LOGO_URL} alt="La Colle" className="h-16 md:h-24 object-contain" />
-            </div>
-            <div className="hidden md:block w-full max-w-md order-3"></div>
+      {/* HEADER PRINCIPAL */}
+      <header className="bg-peach pt-12 pb-16 px-6">
+        <div className="max-w-[1400px] mx-auto flex flex-col items-center gap-12">
+          <img src={LOGO_URL} alt="La Colle" className="h-20 md:h-32 object-contain" />
+          
+          <div className="w-full max-w-2xl relative">
+            <input 
+              type="text" 
+              placeholder="PESQUISAR POR MODELO OU SKU..." 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+              className="w-full bg-white/10 border border-white/30 rounded-full px-10 py-4 text-xs tracking-[0.2em] text-white placeholder-white/60 focus:outline-none focus:bg-white/20 transition-all text-center" 
+            />
           </div>
         </div>
       </header>
 
-      <nav className="bg-white border-b border-gray-100 py-2 px-6 sticky top-[45px] z-30 shadow-sm overflow-hidden">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-center gap-8 overflow-x-auto no-scrollbar scroll-smooth">
+      <nav className="bg-white border-b border-gray-100 py-1 px-6 sticky top-[33px] z-30 shadow-sm overflow-x-auto no-scrollbar">
+        <div className="max-w-[1400px] mx-auto flex items-center justify-center gap-10">
           {categories.map(cat => (
-            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`whitespace-nowrap px-2 py-4 text-[10px] uppercase tracking-[0.2em] font-bold border-b-2 transition-all ${selectedCategory === cat ? 'border-peach text-peach' : 'border-transparent text-gray-400 hover:text-zinc-600'}`}>
+            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`whitespace-nowrap py-5 text-[10px] uppercase tracking-[0.3em] font-bold border-b-2 transition-all ${selectedCategory === cat ? 'border-peach text-peach' : 'border-transparent text-zinc-300 hover:text-zinc-500'}`}>
               {cat}
             </button>
           ))}
         </div>
       </nav>
 
-      <main className="flex-1 max-w-[1400px] mx-auto w-full px-6 py-8">
-        <div className="flex justify-center mb-8">
-          <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-zinc-400 bg-zinc-50 px-8 py-3 rounded-full border border-zinc-100 shadow-sm">
-            {filteredProducts.length} {filteredProducts.length === 1 ? 'Peça Disponível' : 'Peças Disponíveis'}
-          </span>
+      <main className="flex-1 max-w-[1400px] mx-auto w-full px-6 py-16">
+        <div className="flex justify-center mb-16">
+          <div className="text-center">
+            <h2 className="text-[11px] font-bold uppercase tracking-[0.5em] text-zinc-300 mb-2">Catálogo Atacado</h2>
+            <div className="h-[1px] w-12 bg-peach/30 mx-auto"></div>
+          </div>
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center py-40">
-             <div className="w-10 h-10 border-4 border-peach border-t-transparent rounded-full animate-spin"></div>
-             <p className="mt-6 text-[10px] uppercase tracking-[0.3em] text-zinc-400 font-bold animate-pulse">Sincronizando Catálogo...</p>
+          <div className="flex flex-col items-center py-32">
+             <div className="w-8 h-8 border-2 border-peach border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-12">
             {filteredProducts.map(product => (
               <ProductCard 
                 key={product.id} 
@@ -222,12 +205,12 @@ const App: React.FC = () => {
         config={WHOLESALE_CONFIG}
       />
 
-      <footer className="bg-footer-beige py-16 px-6 border-t border-zinc-100 mt-auto">
-        <div className="max-w-[1400px] mx-auto flex flex-col items-center gap-8">
-          <img src={FOOTER_LOGO_URL} alt="La Colle Footer" className="h-20 opacity-80" />
-          <div className="flex flex-col items-center gap-4">
-             <p className="text-[9px] text-zinc-500 tracking-[0.5em] uppercase font-bold">La Colle & CO. Semijoias</p>
-             <p className="text-[8px] text-zinc-400 tracking-[0.2em] uppercase">Vendas exclusivas no atacado</p>
+      <footer className="bg-footer-beige pt-24 pb-16 px-6 border-t border-zinc-100 mt-20">
+        <div className="max-w-[1400px] mx-auto flex flex-col items-center gap-12">
+          <img src={FOOTER_LOGO_URL} alt="La Colle Footer" className="h-20 opacity-50 grayscale" />
+          <div className="text-center space-y-3">
+             <p className="text-[10px] text-zinc-400 tracking-[0.5em] uppercase font-bold">La Colle & CO. Semijoias</p>
+             <p className="text-[8px] text-zinc-400 tracking-[0.2em] uppercase">Feito com carinho para revendedoras</p>
           </div>
         </div>
       </footer>
