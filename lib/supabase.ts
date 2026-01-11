@@ -1,19 +1,26 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const getEnv = (name: string): string => {
-  const env = (import.meta as any).env;
-  const proc = (process as any).env;
-  return env?.[name] || proc?.[name] || '';
-};
+// No Vite, a forma oficial de acessar variáveis é import.meta.env
+// No Vercel, o bundler injeta essas variáveis durante o build.
+const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL');
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY');
+// Validação técnica rigorosa
+const hasUrl = supabaseUrl.length > 5 && supabaseUrl.startsWith('http');
+const hasKey = supabaseAnonKey.length > 10;
+const isCorrectJwt = supabaseAnonKey.startsWith('eyJ');
 
-// Chave do Supabase (Anon Key) não começa com http, por isso a validação antiga falhava.
-const isValidUrl = (v: string) => v && v.length > 10 && v.startsWith('http');
-const isValidKey = (v: string) => v && v.length > 20;
-
-export const supabase = (isValidUrl(supabaseUrl) && isValidKey(supabaseAnonKey)) 
+export const supabase = (hasUrl && hasKey) 
   ? createClient(supabaseUrl, supabaseAnonKey) 
   : null;
+
+export const connectionMeta = {
+  hasUrl,
+  hasKey,
+  isCorrectJwt,
+  isClerk: supabaseAnonKey.startsWith('sb_'),
+  // Retorna os primeiros caracteres para conferência (seguro para o log)
+  urlPrefix: supabaseUrl.substring(0, 15),
+  keyPrefix: supabaseAnonKey.substring(0, 10)
+};
