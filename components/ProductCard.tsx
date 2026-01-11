@@ -15,6 +15,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onUpdate, isEditMode
   const [currentUrl, setCurrentUrl] = useState('');
   const [copied, setCopied] = useState(false);
 
+  const isSoldOut = product.stock <= 0;
+
   const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/LACOLLE-SEMIJOIAS/store-lacolle/main/produtos";
 
   useEffect(() => {
@@ -43,14 +45,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onUpdate, isEditMode
   };
 
   return (
-    <div className="group flex flex-col bg-white transition-all duration-500">
+    <div className={`group flex flex-col bg-white transition-all duration-500 ${isSoldOut ? 'opacity-80' : ''}`}>
       {/* Imagem */}
       <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 rounded-sm shadow-[0_4px_12px_rgba(0,0,0,0.03)] group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-500">
         <img 
           src={imgError ? `https://via.placeholder.com/600x800/fdf2f0/f5a27a?text=${product.sku}` : currentUrl} 
           alt={product.name}
           onError={handleImageError}
-          className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-105"
+          className={`h-full w-full object-cover transition-transform duration-1000 group-hover:scale-105 ${isSoldOut ? 'grayscale-[0.3] opacity-60' : ''}`}
         />
         
         {/* SKU Badge */}
@@ -62,6 +64,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onUpdate, isEditMode
             {copied ? 'COPIADO!' : product.sku}
           </span>
         </button>
+
+        {/* Faixa ESGOTADO Verde */}
+        {isSoldOut && (
+          <div className="absolute top-2 right-2 md:top-4 md:right-4 z-10">
+            <span className="bg-green-600 text-white text-[8px] md:text-[9px] px-2 py-1 md:px-3 md:py-1.5 tracking-[0.1em] font-black shadow-lg rounded-sm uppercase">
+              ESGOTADO
+            </span>
+          </div>
+        )}
       </div>
       
       {/* Detalhes do Produto */}
@@ -79,7 +90,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onUpdate, isEditMode
         <div className="pt-2 md:pt-4 border-t border-zinc-50">
           <div className="flex flex-col gap-0.5 md:gap-1">
             <span className="text-[8px] md:text-[9px] text-zinc-400 font-medium tracking-[0.05em] uppercase">Banhado a Ouro 18k</span>
-            <span className="text-[9px] md:text-[10px] text-zinc-500 font-light italic">Orçamento via WhatsApp</span>
+            <span className={`text-[9px] md:text-[10px] font-light italic ${isSoldOut ? 'text-zinc-300' : 'text-zinc-500'}`}>
+              {isSoldOut ? 'Indisponível no momento' : 'Orçamento via WhatsApp'}
+            </span>
           </div>
         </div>
       </div>
